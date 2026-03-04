@@ -1,0 +1,217 @@
+---
+title: fallback()
+description: Renders a Firefox-compatible fallback view with browser compatibility notice
+---
+
+The `fallback()` function generates a simplified SVG view for Firefox browsers, displaying the profile bio text with a polite notice about browser compatibility.
+
+## Function Signature
+
+```typescript
+export const fallback = (props: Props & { width: number }) => string
+```
+
+## Type Definitions
+
+### Props
+
+```typescript
+interface Props {
+  width?: number;
+  height: number;
+  theme: "light" | "dark";
+}
+```
+
+## Parameters
+
+<ParamField path="height" type="number" required>
+  The height of the SVG in pixels (typically 180px)
+</ParamField>
+
+<ParamField path="width" type="number" required>
+  The width of the SVG in pixels (typically 420px)
+</ParamField>
+
+<ParamField path="theme" type="'light' | 'dark'" required>
+  Color theme for the fallback view
+</ParamField>
+
+## What It Renders
+
+The `fallback()` function renders a simplified view containing:
+
+- **Profile bio**: The same introductory text used in the main view
+- **Browser hint**: A small italic message suggesting Chrome/Safari for the full experience
+- **Character-by-character animation**: Each letter fades in individually
+- **Firefox-only visibility**: Hidden in all browsers except Firefox
+
+## Real Usage Example
+
+From `worker.ts:43-44`:
+
+```typescript
+if (section === "fallback") {
+  content = fallback({ height: 180, width: 420, theme });
+}
+```
+
+### Usage in GitHub README
+
+```markdown
+<!-- Fallback for Firefox users -->
+<picture>
+  <source media="(prefers-color-scheme: dark)" 
+          srcset="https://readme.aidre.com/?section=fallback&theme=dark">
+  <source media="(prefers-color-scheme: light)" 
+          srcset="https://readme.aidre.com/?section=fallback&theme=light">
+  <img alt="Profile" src="https://readme.aidre.com/?section=fallback">
+</picture>
+```
+
+## Browser Compatibility Notes
+
+### Why a Fallback?
+
+The main contribution graph uses advanced CSS features that may not work optimally in Firefox:
+
+- **`<foreignObject>` in SVG**: While supported, rendering behavior differs
+- **CSS container queries**: Browser support varies
+- **CSS animations in SVG**: Performance characteristics differ across browsers
+- **`content-visibility`**: Limited Firefox support
+
+The fallback provides a graceful degradation that maintains the profile's aesthetic while setting appropriate expectations.
+
+### Firefox-Specific Rendering
+
+The fallback uses Firefox-specific CSS to control visibility:
+
+```css
+.wrapper {
+  display: none; /* Hidden by default */
+}
+
+@-moz-document url-prefix() {
+  /* Only visible in Firefox */
+  .wrapper {
+    display: flex;
+    align-items: end;
+  }
+}
+```
+
+In the main render functions, the opposite pattern is used:
+
+```css
+/* From main() function */
+@-moz-document url-prefix() {
+  .wrapper {
+    display: none; /* Hide main view in Firefox */
+  }
+}
+```
+
+## Content
+
+The fallback displays:
+
+### Profile Bio
+
+```typescript
+const BODY_COPY = `Aidre Cabrera—an autodidact aspirant who loves coding, writing, and learning.`;
+```
+
+### Browser Hint
+
+```html
+<p class="hint fade-in">
+  — I'm all for the foxy browser, but try Chrome/Safari for this one!
+</p>
+```
+
+The message is friendly and respectful, acknowledging Firefox while guiding users to browsers with better support for the advanced features.
+
+## CSS Styling
+
+### Layout
+
+```css
+:root {
+  --size-height: ${props.height};
+  --size-width: ${props.width};
+}
+
+.intro {
+  font-size: 22px;
+  font-weight: 300;
+}
+
+.hint {
+  margin-block-start: 10px;
+  font-size: 10px;
+  font-style: italic;
+}
+```
+
+### Animation Timing
+
+The fallback uses the same animation timing as other components:
+
+```css
+.intro span {
+  --duration: 980ms;
+  --delay: calc(var(--animate-in-contributions-delay) + var(--i) * 10ms);
+}
+
+.hint {
+  --duration: 1.2s;
+  --delay: calc(var(--animate-in-contributions-delay) + 2.5s);
+}
+```
+
+Each character fades in with a 10ms stagger, and the hint appears 2.5s after the last character.
+
+## SVG Attributes
+
+Unlike other render functions, `fallback()` includes a `viewbox` attribute:
+
+```typescript
+return svg(styles, html, {
+  width: `${props.width}`,
+  height: `${props.height}`,
+  "data-theme": `${props.theme}`,
+  viewbox: `0 0 ${props.width} ${props.height}`, // Explicit viewBox
+});
+```
+
+This ensures proper scaling in different contexts.
+
+## Returns
+
+**Type**: `string`
+
+Returns a complete SVG string with:
+- Firefox-only visibility CSS
+- Animated character-by-character text
+- Friendly browser compatibility message
+- Fixed dimensions with viewBox
+- Theme-aware styling
+
+## Best Practices
+
+1. **Always include a fallback**: Even if your main view works in Firefox, a fallback ensures a good experience for all users
+2. **Keep it simple**: The fallback should load quickly and not rely on advanced features
+3. **Be respectful**: The browser hint is friendly, not condescending
+4. **Test in Firefox**: Verify that the fallback actually displays correctly
+5. **Match the theme**: Ensure fallback respects light/dark mode preferences
+
+## Alternative Approaches
+
+Instead of hiding the main view in Firefox, you could:
+
+1. **Simplify for Firefox**: Render a simplified version of the contribution graph
+2. **Static image**: Serve a pre-rendered PNG for Firefox users
+3. **Feature detection**: Use JavaScript to detect feature support
+4. **Progressive enhancement**: Start with the fallback and enhance for capable browsers
+
+The current approach prioritizes a clean, informative fallback over partial functionality.

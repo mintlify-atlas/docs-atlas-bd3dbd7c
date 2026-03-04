@@ -1,0 +1,362 @@
+---
+title: Contribution Data
+description: GitHub GraphQL API integration and contribution level calculation
+---
+
+The contribution data system fetches activity statistics from GitHub's GraphQL API and WhatPulse, processes them into a normalized format, and stores them as static JSON for deployment.
+
+## GitHub GraphQL API Integration
+
+The system uses GitHub's GraphQL API v4 to fetch contribution calendar data.
+
+### GraphQL Query
+
+From `scripts/stats.ts`:
+
+```typescript
+const body = {
+  query: `query ($username: String!, $from: DateTime, $to: DateTime) {
+    user(login: $username) {
+      contributionsCollection(from: $from, to: $to) {
+        contributionCalendar {
+          totalContributions
+          weeks {
+            contributionDays {
+              contributionCount
+              date
+              contributionLevel
+            }
+          }
+        }
+      }
+    }
+  }`,
+  variables: {
+    username: "aidrecabrera",
+    from: date.from?.toISOString(),
+    to: date.to?.toISOString(),
+  },
+};
+```
+
+### Making the Request
+
+```typescript
+const response = await fetch("https://api.github.com/graphql", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "User-Agent": "aidrecabrera/readme",
+    Authorization: `bearer ${process.env.GH_SECRET}`,
+  },
+  body: JSON.stringify(body),
+});
+```
+
+<Warning>
+You must provide a GitHub Personal Access Token via the `GH_SECRET` environment variable. The token needs `read:user` scope.
+</Warning>
+
+### API Response Structure
+
+```typescript
+type Response = {
+  data: {
+    user: {
+      contributionsCollection: {
+        contributionCalendar: {
+          totalContributions: number;
+          weeks: {
+            contributionDays: Contribution[];
+          }[];
+        };
+      };
+    };
+  };
+};
+
+type Contribution = {
+  contributionCount: number;
+  date: string;
+  contributionLevel:
+    | "NONE"
+    | "FIRST_QUARTILE"
+    | "SECOND_QUARTILE"
+    | "THIRD_QUARTILE"
+    | "FOURTH_QUARTILE";
+};
+```
+
+## Contribution Level Calculation
+
+GitHub returns contribution levels as quartile strings. These are converted to integers for rendering:
+
+```typescript
+const levelToInt = (level: Contribution["contributionLevel"]) => {
+  switch (level) {
+    case "NONE":
+      return 0;  // No contributions
+    case "FIRST_QUARTILE":
+      return 1;  // 1-25th percentile
+    case "SECOND_QUARTILE":
+      return 2;  // 25th-50th percentile
+    case "THIRD_QUARTILE":
+      return 3;  // 50th-75th percentile
+    case "FOURTH_QUARTILE":
+      return 4;  // 75th-100th percentile (most active)
+  }
+};
+```
+
+### How GitHub Calculates Levels
+
+GitHub determines quartiles based on your personal contribution distribution:
+
+1. Collects all your daily contribution counts for the period
+2. Sorts them and divides into four equal groups (quartiles)
+3. Assigns each day to a quartile based on where it falls in the distribution
+
+<Info>
+Contribution levels are **personalized** - your "FOURTH_QUARTILE" represents your most active days, not a universal threshold.
+</Info>
+
+## Multi-Year Data Fetching
+
+GitHub's API limits contribution queries to one year at a time. The system handles this with automatic pagination:
+
+```typescript
+async function getAllContributions(start: Date, end = new Date()) {
+  const years: Year[] = [];
+  let cursor = start;
+  let contributions = 0;
+
+  while (cursor < end) {
+    let next = new Date(cursor.getFullYear() + 1, 0, 1);
+    // Prevent fetching data beyond the current date
+    if (next > end) next = end;
+    
+    console.info("...Fetching from", cursor.toISOString(), next.toISOString());
+    const data = await request({ to: next, from: cursor });
+    
+    contributions += data.contributions;
+    years.push({
+      from: cursor.toISOString(),
+      to: next.toISOString(),
+      days: data.weeks
+        .flatMap((week) =>
+          week.contributionDays.map((day) => levelToInt(day.contributionLevel))
+        )
+        .reverse(),  // Show most recent first
+    });
+    
+    cursor = next;
+  }
+  
+  return [years.reverse(), contributions];
+}
+```
+
+### Default Date Range
+
+```typescript
+export const START_DATE = new Date();
+START_DATE.setFullYear(START_DATE.getFullYear() - 1);
+
+const [years, contributions] = await getAllContributions(START_DATE);
+```
+
+By default, the system fetches **one year** of contribution history. To fetch more:
+
+```typescript
+// Fetch 3 years of data
+const startDate = new Date();
+startDate.setFullYear(startDate.getFullYear() - 3);
+const [years, contributions] = await getAllContributions(startDate);
+```
+
+## Data Storage Format
+
+Processed data is written to `src/stats.json`:
+
+```typescript
+await writeFile("src/stats.json", JSON.stringify({ years, contributions }));
+```
+
+### Output Structure
+
+```json
+{
+  "years": [
+    {
+      "from": "2024-03-04T00:00:00.000Z",
+      "to": "2025-01-01T00:00:00.000Z",
+      "days": [0, 1, 2, 3, 4, 2, 1, 0, ...]
+    },
+    {
+      "from": "2023-01-01T00:00:00.000Z",
+      "to": "2024-01-01T00:00:00.000Z",
+      "days": [1, 2, 3, 4, 3, 2, 1, 0, ...]
+    }
+  ],
+  "contributions": 1247
+}
+```
+
+<Note>
+The `days` array contains integers 0-4 representing contribution levels, with the most recent day first (reversed order).
+</Note>
+
+## WhatPulse Integration
+
+WhatPulse provides computer usage statistics (keyboard, mouse, network activity).
+
+### Fetching WhatPulse Data
+
+```typescript
+const fetchPulse = async (username: string): Promise<PulseStats> => {
+  const url = `https://api.whatpulse.org/user.php?user=${username}&formatted=yes&format=json`;
+  const response = await fetch(url);
+  
+  if (!response.ok) {
+    throw new Error(`Error fetching WhatPulse stats: ${response.statusText}`);
+  }
+  
+  const data = await response.json() as PulseStats;
+  return data;
+};
+
+const pulseData = await fetchPulse("svenesismar");
+await writeFile("src/pulse.json", JSON.stringify(pulseData, null, 2));
+```
+
+### WhatPulse Data Structure
+
+```typescript
+interface PulseStats {
+  GeneratedTime: string;
+  UserID: string;
+  AccountName: string;
+  Keys: string;              // Total key presses
+  Clicks: string;            // Total mouse clicks
+  Scrolls: string;           // Total scroll events
+  Download: string;          // Total download in formatted string
+  Upload: string;            // Total upload in formatted string
+  DownloadMB: number;        // Download in megabytes
+  UploadMB: number;          // Upload in megabytes
+  UptimeSeconds: string;
+  UptimeShort: string;       // e.g., "52w 3d"
+  UptimeLong: string;        // e.g., "52 weeks, 3 days, 14 hours"
+  Computers: {
+    [key: string]: Computer; // Per-computer breakdowns
+  };
+}
+```
+
+### Rendering WhatPulse Stats
+
+The `pulse()` function in `render.ts` displays these statistics:
+
+```typescript
+export const pulse = (data: PulseStats, props: Pick<Props, "height" | "theme">) => {
+  const html = `
+    <div class="wrapper grid label">
+      <p class="fade-in uptime">Uptime: ${data.UptimeLong}</p>
+      <p class="fade-in up">Download: ${data.Download}</p>
+      <p class="fade-in down">Upload: ${data.Upload}</p>
+      <p class="fade-in keys">Keys: ${data.Keys}</p>
+      <p class="fade-in clicks">Clicks: ${data.Clicks}</p>
+    </div>
+  `;
+  
+  return svg(styles, html, { height: `${props.height}`, "data-theme": props.theme });
+};
+```
+
+## Caching Strategy
+
+The system uses a **static generation** approach rather than runtime caching:
+
+### Build-Time Generation
+
+```json
+// package.json
+{
+  "scripts": {
+    "stats": "tsm --env-file .env scripts/stats.ts",
+    "deploy": "pnpm stats && wrangler deploy"
+  }
+}
+```
+
+1. `pnpm stats` fetches latest data and writes to JSON files
+2. `wrangler deploy` bundles Worker code + JSON data
+3. Cloudflare serves the bundled assets from edge locations
+
+### Why Not Runtime Caching?
+
+**Advantages of static generation:**
+- ✅ Zero API calls at runtime (faster response)
+- ✅ No rate limiting concerns
+- ✅ Predictable costs
+- ✅ Works even if GitHub API is down
+
+**Disadvantages:**
+- ❌ Data only updates on deployment
+- ❌ Requires manual or scheduled deploys
+
+<Info>
+For real-time updates, set up a GitHub Action to run `pnpm deploy` on a schedule (e.g., daily at midnight).
+</Info>
+
+## Error Handling
+
+### API Request Failures
+
+```typescript
+const response = await fetch("https://api.github.com/graphql", { /* ... */ })
+  .then((res) => res.json() as Promise<Response>);
+
+if (!response.data || !response.data.user) {
+  throw new Error(
+    `Failed to fetch contributions: ${JSON.stringify(response)}`
+  );
+}
+```
+
+### Invalid Data Format
+
+```typescript
+if (!data || typeof data !== "object") {
+  throw new Error(`Invalid data format: ${JSON.stringify(data)}`);
+}
+```
+
+<Warning>
+If the stats script fails, the deployment will also fail. Always check logs when deployments fail to identify API issues.
+</Warning>
+
+## Running the Stats Script
+
+Execute manually to update data:
+
+```bash
+pnpm stats
+```
+
+This will:
+1. Load environment variables from `.env`
+2. Fetch GitHub contributions for the past year
+3. Fetch WhatPulse statistics
+4. Write `src/stats.json` and `src/pulse.json`
+5. Display "...Done" when complete
+
+### Required Environment Variables
+
+```bash
+# .env
+GH_SECRET=ghp_your_personal_access_token_here
+```
+
+<Note>
+The `tsm` command (TypeScript Module loader) allows running TypeScript directly without a build step, using `.env` file support.
+</Note>

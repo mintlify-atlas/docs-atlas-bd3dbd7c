@@ -1,0 +1,362 @@
+---
+title: Sections and Layout
+description: Understanding the different section types and layout customization options
+---
+
+## Overview
+
+The GitHub profile README is composed of multiple SVG sections that work together to create a dynamic, animated profile display. Each section serves a specific purpose and can be customized independently.
+
+## Available Section Types
+
+The project defines four main section types, controlled via URL parameters:
+
+### 1. Top Section
+
+The header section containing menu, contribution count, and branding.
+
+**URL Parameter:** `?section=top`
+
+```typescript
+if (section === "top") {
+  const { contributions } = data;
+  content = top({ height: 20, contributions, theme });
+}
+```
+
+Reference: `src/worker.ts:22-24`
+
+#### Top Section Structure
+
+The top section uses a 6-column grid layout with three main areas:
+
+```html
+<div class="wrapper grid label">
+  <div class="menu fade-in">Connect with me</div>
+  <div class="contributions fade-in">
+    <span class="shine">[X]k</span> Contributions
+  </div>
+  <div class="readme fade-in">&lt;Svene/&gt;</div>
+</div>
+```
+
+Reference: `src/render.ts:533-540`
+
+#### Responsive Layout
+
+The top section adapts to different screen sizes:
+
+**Small screens (< 550px):**
+```css
+.menu { grid-area: 1 / 1 / span 1 / span 2; }
+.contributions { contain: strict; /* hidden */ }
+.readme { grid-area: 1 / 5 / span 1 / span 2; }
+```
+
+**Medium screens (> 550px):**
+```css
+.menu { grid-area: 1 / 1 / span 1 / span 2; }
+.contributions { grid-area: 1 / 3 / span 1 / span 2; }
+.readme { grid-area: 1 / 5 / span 1 / span 2; }
+```
+
+**Large screens (> 700px):**
+```css
+.menu { grid-area: 1 / 1 / span 1 / span 3; }
+.contributions { grid-area: 1 / 4 / span 1 / span 2; }
+.readme { grid-area: 1 / 6 / span 1 / span 1; }
+```
+
+Reference: `src/render.ts:506-529`
+
+### 2. Main Section
+
+The primary content area featuring the contribution graph and introduction text.
+
+**URL Parameter:** Default (no section parameter)
+
+```typescript
+const years = data.years.slice(0, MAX_YEARS);
+const options = {
+  dots: {
+    rows: 6,
+    size: 24,
+    gap: 5,
+  },
+  year: {
+    gap: 5,
+  },
+};
+
+content = main({
+  height: 310,
+  years,
+  sizes,
+  length,
+  location,
+  theme,
+  ...options,
+});
+```
+
+Reference: `src/worker.ts:46-89`
+
+#### Main Section Components
+
+1. **Introduction Text**: Animated character-by-character
+2. **Contribution Graph**: Scrolling year-based activity visualization
+
+```html
+<main class="wrapper grid">
+  <article class="intro">
+    <p>[Animated text]</p>
+  </article>
+  <article class="graph">
+    <div class="years">
+      <!-- Year containers with day dots -->
+    </div>
+  </article>
+</main>
+```
+
+Reference: `src/render.ts:444-464`
+
+### 3. Link Sections
+
+Individual social media and external link sections with animated arrows.
+
+**Available link sections:**
+- `?section=link-resume`
+- `?section=link-website`
+- `?section=link-linkedin`
+- `?section=link-facebook`
+- `?section=link-instagram`
+- `?section=link-twitter`
+
+```typescript
+else if (section === "link-resume") {
+  const index = Number(searchParams.get("i")) ?? 0;
+  content = link({ height: 18, width: 100, index, theme })("Resume");
+}
+```
+
+Reference: `src/worker.ts:25-36`
+
+#### Link Section Structure
+
+```html
+<main class="wrapper">
+  <a class="link fade-in">
+    <div class="link__label shine">[Label]</div>
+    <div class="link__arrow">↗</div>
+  </a>
+</main>
+```
+
+Reference: `src/render.ts:600-605`
+
+#### Link Parameters
+
+- `height`: Typically 18-20px
+- `width`: Typically 100px
+- `index`: Controls staggered animation delay
+- `theme`: Light or dark
+
+### 4. Fallback Section
+
+A Firefox-specific fallback section for browsers that don't support all features.
+
+**URL Parameter:** `?section=fallback`
+
+```typescript
+else if (section === "fallback") {
+  content = fallback({ height: 180, width: 420, theme });
+}
+```
+
+Reference: `src/worker.ts:43-44`
+
+#### Browser-Specific Display
+
+The fallback section uses `@-moz-document` to show only in Firefox:
+
+```css
+.wrapper {
+  display: none;
+}
+@-moz-document url-prefix() {
+  /* Hide everywhere but Firefox */
+  .wrapper {
+    display: flex;
+    align-items: end;
+  }
+}
+```
+
+Reference: `src/render.ts:624-633`
+
+## Grid Layout System
+
+All sections use a common 6-column grid layout:
+
+```css
+.grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+}
+```
+
+Reference: `src/render.ts:204-207`
+
+## Section Parameters
+
+### Common Parameters
+
+All sections accept these base parameters:
+
+```typescript
+interface Props {
+  width?: number;
+  height: number;
+  theme: "light" | "dark";
+}
+```
+
+Reference: `src/render.ts:7-11`
+
+### Main Section Parameters
+
+```typescript
+type Main = {
+  years: Year[];
+  sizes: number[][];
+  length: number;
+  location: { city: string; country: string };
+  dots: {
+    rows: number;
+    size: number;
+    gap: number;
+  };
+  year: {
+    gap: number;
+  };
+};
+```
+
+Reference: `src/render.ts:292-305`
+
+### Dot Configuration
+
+The contribution graph dots are highly configurable:
+
+```typescript
+dots: {
+  rows: 6,        // Number of rows in the grid
+  size: 24,       // Size of each dot in pixels
+  gap: 5,         // Gap between dots in pixels
+}
+```
+
+Reference: `src/worker.ts:52-56`
+
+## Layout Customization
+
+### Adjusting Grid Areas
+
+Each section component maps to specific grid areas:
+
+```css
+.intro {
+  grid-area: 1 / 1 / span 1 / span 6;  /* Full width on mobile */
+}
+
+@media (width > 550px) {
+  .intro {
+    grid-area: 1 / 3 / span 1 / span 4;  /* Centered on tablet */
+  }
+}
+
+@media (width > 700px) {
+  .intro {
+    grid-area: 1 / 4 / span 1 / span 3;  /* Narrower on desktop */
+  }
+}
+```
+
+Reference: `src/render.ts:328-350`
+
+### Breakpoints
+
+Two responsive breakpoints are defined:
+
+```typescript
+const BP_MEDIUM = 550;  // Tablet
+const BP_LARGE = 700;   // Desktop
+```
+
+Reference: `src/render.ts:3-4`
+
+### Container Sizing
+
+Sections use CSS containment for performance:
+
+```css
+.wrapper {
+  contain: strict;
+  block-size: calc(var(--size-height) * 1px);
+  container-type: inline-size;
+  position: relative;
+  overflow: clip;
+}
+```
+
+Reference: `src/render.ts:210-215`
+
+## Year Data Structure
+
+The contribution graph processes year data:
+
+```typescript
+export type Year = {
+  from: string;      // Start date
+  to: string;        // End date
+  days: number[];    // Array of activity levels (0-4)
+};
+```
+
+Reference: `src/worker.ts:7-11`
+
+### Maximum Years
+
+By default, only the most recent 3 years are displayed:
+
+```typescript
+const MAX_YEARS = 3;
+const years = data.years.slice(0, MAX_YEARS);
+```
+
+Reference: `src/worker.ts:13, 46`
+
+## Dynamic Size Calculation
+
+Section dimensions are calculated based on content:
+
+```typescript
+const sizes = years.map((year) => {
+  const columns = Math.ceil(year.days.length / options.dots.rows);
+  const width = columns * options.dots.size + (columns - 1) * options.dots.gap;
+  const height = options.dots.rows * options.dots.size + 
+                 (options.dots.rows - 1) * options.dots.gap;
+  return [width, height];
+});
+```
+
+Reference: `src/worker.ts:63-71`
+
+## Customization Tips
+
+1. **Adjust dot density**: Modify `rows`, `size`, and `gap` in the dots configuration
+2. **Change year limit**: Update `MAX_YEARS` to show more or fewer years
+3. **Customize grid layout**: Modify grid-area values for different positioning
+4. **Add new sections**: Create new section handlers in worker.ts
+5. **Responsive behavior**: Adjust breakpoint values and media queries

@@ -1,80 +1,454 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Deploy your own dynamic GitHub profile README in minutes
+icon: rocket
 ---
 
-## Get started in three steps
+This guide walks you through setting up your own instance of the dynamic GitHub profile README generator. By the end, you'll have a live Cloudflare Worker serving animated SVG graphics for your profile.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
+Before you begin, make sure you have:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Node.js" icon="node-js">
+    Version 18 or higher
+  </Card>
+  <Card title="pnpm" icon="box">
+    Version 8 or higher (specified in package.json)
+  </Card>
+  <Card title="GitHub account" icon="github">
+    For contribution data and hosting your profile
+  </Card>
+  <Card title="Cloudflare account" icon="cloud">
+    Free tier works perfectly for this project
+  </Card>
 </CardGroup>
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  You'll also need a **GitHub personal access token** with `read:user` scope to fetch contribution data.
 </Note>
+
+## Installation
+
+<Steps>
+  <Step title="Fork or clone the repository">
+    Start by getting your own copy of the source code:
+    
+    ```bash
+    git clone https://github.com/aidrecabrera/aidrecabrera.git
+    cd aidrecabrera
+    ```
+    
+    <Tip>
+      If you fork the repository, you can enable GitHub Actions to automatically update your stats twice daily.
+    </Tip>
+  </Step>
+
+  <Step title="Install dependencies">
+    The project uses pnpm as specified in `package.json`:
+    
+    ```json package.json
+    {
+      "name": "aidrecabrera",
+      "version": "1.0.0",
+      "packageManager": "pnpm@10.6.5",
+      "scripts": {
+        "start": "wrangler dev",
+        "deploy": "pnpm stats && wrangler deploy",
+        "stats": "tsm --env-file .env scripts/stats.ts"
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20231218.0",
+        "typescript": "^5.3.3",
+        "wrangler": "^4.4.0"
+      }
+    }
+    ```
+    
+    Install the packages:
+    
+    ```bash
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Create environment variables file">
+    Create a `.env` file in the project root with your credentials:
+    
+    ```env .env
+    # GitHub personal access token with read:user scope
+    GH_SECRET=ghp_your_token_here
+    
+    # Optional: WhatPulse username for keyboard/mouse stats
+    WHATPULSE_USERNAME=your_username
+    ```
+    
+    <Warning>
+      Never commit your `.env` file to version control. It's already in `.gitignore`.
+    </Warning>
+    
+    ### Creating a GitHub token
+    
+    1. Go to [GitHub Settings > Developer settings > Personal access tokens](https://github.com/settings/tokens)
+    2. Click **Generate new token (classic)**
+    3. Give it a descriptive name like "Profile README Stats"
+    4. Select the **`read:user`** scope
+    5. Click **Generate token** and copy it to your `.env` file
+  </Step>
+
+  <Step title="Update the worker configuration">
+    Edit `wrangler.toml` to customize your worker name:
+    
+    ```toml wrangler.toml
+    name = "aidre"
+    main = "src/worker.ts"
+    compatibility_date = "2023-11-21"
+    ```
+    
+    Change `name` to something unique for your Cloudflare Workers subdomain.
+  </Step>
+
+  <Step title="Customize the username in scripts">
+    Open `scripts/stats.ts` and update the username:
+    
+    ```typescript scripts/stats.ts
+    const body = {
+      query: `query ($username: String!, $from: DateTime, $to: DateTime) {
+        user(login: $username) {
+          contributionsCollection(from: $from, to: $to) {
+            contributionCalendar {
+              totalContributions
+              // ...
+            }
+          }
+        }
+      }`,
+      variables: {
+        username: "aidrecabrera", // Change this to your GitHub username
+        from: date.from?.toISOString(),
+        to: date.to?.toISOString(),
+      },
+    };
+    ```
+  </Step>
+
+  <Step title="Fetch your contribution data">
+    Run the stats script to fetch your GitHub contribution history:
+    
+    ```bash
+    pnpm stats
+    ```
+    
+    You should see output like:
+    
+    ```
+    ...Fetching from 2024-03-04T00:00:00.000Z 2025-01-01T00:00:00.000Z
+    ...Fetching from 2025-01-01T00:00:00.000Z 2026-03-04T00:00:00.000Z
+    ...Done
+    ```
+    
+    This creates `src/stats.json` with your contribution data.
+  </Step>
+</Steps>
+
+## Local development
+
+Test your worker locally before deploying:
+
+```bash
+pnpm start
+```
+
+This starts the Wrangler development server. Visit:
+
+- `http://localhost:8787/?section=top&theme=light` - Top header bar
+- `http://localhost:8787/?section=main&theme=dark` - Main contribution graph
+- `http://localhost:8787/?section=link-website&theme=light&i=0` - Social link example
+
+<Tip>
+  The worker uses query parameters to control which section to render and which theme to use.
+</Tip>
+
+## Deploy to Cloudflare
+
+<Steps>
+  <Step title="Authenticate with Cloudflare">
+    Log in to your Cloudflare account via Wrangler:
+    
+    ```bash
+    pnpm wrangler login
+    ```
+    
+    This opens a browser window for authentication.
+  </Step>
+
+  <Step title="Deploy the worker">
+    Deploy your worker to Cloudflare's edge network:
+    
+    ```bash
+    pnpm deploy
+    ```
+    
+    The `deploy` script runs `pnpm stats` first to ensure you have fresh data, then deploys with Wrangler.
+    
+    You'll receive a URL like:
+    
+    ```
+    Published aidre (2.34 sec)
+      https://aidre.your-subdomain.workers.dev
+    ```
+  </Step>
+
+  <Step title="Test your deployment">
+    Visit your worker URL with different sections:
+    
+    ```
+    https://aidre.your-subdomain.workers.dev/?section=top&theme=dark
+    https://aidre.your-subdomain.workers.dev/?section=main&theme=light
+    ```
+    
+    You should see SVG images rendering your contribution data.
+  </Step>
+</Steps>
+
+## Add to your GitHub profile
+
+Now that your worker is live, add it to your GitHub profile README:
+
+<Steps>
+  <Step title="Create or edit your profile README">
+    If you don't have a profile README yet:
+    
+    1. Create a repository with the same name as your GitHub username
+    2. Add a `README.md` file
+    3. The README will automatically display on your profile
+    
+    <Info>
+      GitHub has a guide on [managing your profile README](https://docs.github.com/en/account-and-profile/setting-up-and-managing-your-github-profile/customizing-your-profile/managing-your-profile-readme).
+    </Info>
+  </Step>
+
+  <Step title="Add the SVG images">
+    Use the `<picture>` element with theme-specific sources:
+    
+    ```markdown README.md
+    <!-- Top header bar -->
+    <picture>
+      <source media="(prefers-color-scheme: dark)" 
+              srcset="https://aidre.your-subdomain.workers.dev/?section=top&theme=dark">
+      <img src="https://aidre.your-subdomain.workers.dev/?section=top&theme=light" 
+           width="100%" height="20" align="left">
+    </picture>
+    <img src="data:null;," width="100%" height="0" align="left" alt="">
+    
+    <!-- Social link example -->
+    <a target="_blank" href="https://your-website.com">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" 
+                srcset="https://aidre.your-subdomain.workers.dev/?section=link-website&theme=dark">
+        <img src="https://aidre.your-subdomain.workers.dev/?section=link-website&theme=light&i=0" 
+             alt="visit my website" width="100" height="18px" align="left">
+      </picture>
+    </a>
+    <img src="data:null;," width="100%" height="0" align="left" alt="">
+    
+    <!-- Main contribution graph -->
+    <picture>
+      <source media="(prefers-color-scheme: dark)" 
+              srcset="https://aidre.your-subdomain.workers.dev/?section=main&theme=dark">
+      <img src="https://aidre.your-subdomain.workers.dev/?section=main&theme=light" 
+           alt="Contribution graph" width="100%" height="310" align="left">
+    </picture>
+    ```
+    
+    <Note>
+      The empty `<img src="data:null;,">` elements create spacing between sections. Adjust `height` values as needed.
+    </Note>
+  </Step>
+
+  <Step title="Customize link sections">
+    Available link sections in the source code:
+    
+    - `link-resume` - Resume/CV link
+    - `link-website` - Personal website
+    - `link-linkedin` - LinkedIn profile
+    - `link-twitter` - Twitter/X profile
+    - `link-facebook` - Facebook profile
+    - `link-instagram` - Instagram profile
+    
+    Each accepts an `i` parameter for animation stagger timing:
+    
+    ```typescript src/worker.ts
+    else if (section === "link-website") {
+      const index = Number(searchParams.get("i")) ?? 0;
+      content = link({ height: 18, width: 100, index, theme })("Website");
+    }
+    ```
+    
+    You can add custom sections by modifying `src/worker.ts`.
+  </Step>
+</Steps>
+
+## Set up automatic updates
+
+Keep your stats fresh with GitHub Actions:
+
+<Steps>
+  <Step title="Add repository secrets">
+    In your GitHub repository:
+    
+    1. Go to **Settings > Secrets and variables > Actions**
+    2. Add these secrets:
+       - `GH_SECRET`: Your GitHub personal access token
+       - `CLOUDFLARE_API_TOKEN`: From [Cloudflare dashboard](https://dash.cloudflare.com/profile/api-tokens)
+       - `CLOUDFLARE_ACCOUNT_ID`: From your Cloudflare Workers dashboard
+  </Step>
+
+  <Step title="Create a workflow file">
+    Add `.github/workflows/update-stats.yml`:
+    
+    ```yaml .github/workflows/update-stats.yml
+    name: Update Stats
+    
+    on:
+      schedule:
+        - cron: '0 0,12 * * *'  # Run at midnight and noon UTC
+      workflow_dispatch:  # Allow manual trigger
+    
+    jobs:
+      update:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v4
+          
+          - uses: pnpm/action-setup@v2
+            with:
+              version: 10
+          
+          - uses: actions/setup-node@v4
+            with:
+              node-version: 20
+              cache: 'pnpm'
+          
+          - name: Install dependencies
+            run: pnpm install
+          
+          - name: Fetch stats
+            env:
+              GH_SECRET: ${{ secrets.GH_SECRET }}
+            run: pnpm stats
+          
+          - name: Commit stats
+            run: |
+              git config user.name "github-actions[bot]"
+              git config user.email "github-actions[bot]@users.noreply.github.com"
+              git add src/stats.json
+              git diff --quiet && git diff --staged --quiet || git commit -m "Update stats"
+              git push
+          
+          - name: Deploy to Cloudflare
+            env:
+              CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            run: pnpm wrangler deploy
+    ```
+  </Step>
+
+  <Step title="Verify the workflow">
+    - Push the workflow file to your repository
+    - Go to the **Actions** tab
+    - Manually trigger the workflow using the **Run workflow** button
+    - Check that stats are updated and deployed successfully
+  </Step>
+</Steps>
+
+## Verification
+
+Confirm everything is working:
+
+<AccordionGroup>
+  <Accordion title="Worker is responding">
+    ```bash
+    curl -I https://aidre.your-subdomain.workers.dev/?section=top&theme=light
+    ```
+    
+    Should return `200 OK` with `content-type: image/svg+xml`
+  </Accordion>
+  
+  <Accordion title="Themes are working">
+    Visit the same URL with `theme=light` and `theme=dark` - colors should change appropriately.
+  </Accordion>
+  
+  <Accordion title="Data is recent">
+    Check that your contribution graph shows recent activity. If not, run `pnpm stats` again.
+  </Accordion>
+  
+  <Accordion title="GitHub Actions is running">
+    Check the Actions tab in your repository to ensure the workflow runs successfully.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="GraphQL API errors">
+    **Error**: `Failed to fetch contributions`
+    
+    **Solution**: Check that:
+    - Your `GH_SECRET` is valid and has the `read:user` scope
+    - The username in `scripts/stats.ts` matches your GitHub username
+    - Your token hasn't expired
+  </Accordion>
+  
+  <Accordion title="Wrangler authentication fails">
+    **Error**: `Not logged in`
+    
+    **Solution**: Run `pnpm wrangler login` and authenticate in the browser that opens.
+  </Accordion>
+  
+  <Accordion title="SVG doesn't render on GitHub">
+    **Error**: Image shows as broken
+    
+    **Solution**: 
+    - Ensure your worker URL is publicly accessible
+    - Check that the `content-type` header is `image/svg+xml`
+    - Verify there are no CORS issues (shouldn't be any for SVG)
+  </Accordion>
+  
+  <Accordion title="Animations don't work in Firefox">
+    **Known issue**: Firefox doesn't support CSS animations in SVG `foreignObject` elements.
+    
+    **Solution**: The project includes a `fallback` section specifically for Firefox users:
+    
+    ```markdown
+    <picture>
+      <source media="(prefers-color-scheme: dark)" 
+              srcset="https://aidre.your-subdomain.workers.dev/?section=fallback&theme=dark">
+      <img src="https://aidre.your-subdomain.workers.dev/?section=fallback&theme=light" 
+           alt="" width="420" align="left">
+    </picture>
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+Now that your profile is live, explore these guides:
+
+<CardGroup cols={2}>
+  <Card title="Customize themes" icon="palette" href="/customization/themes">
+    Change colors, fonts, and animations
+  </Card>
+  
+  <Card title="Add custom sections" icon="plus" href="/customization/sections">
+    Create new SVG sections for your profile
+  </Card>
+  
+  <Card title="API reference" icon="code" href="/api/overview">
+    Explore all available sections and parameters
+  </Card>
+  
+  <Card title="Architecture" icon="diagram-project" href="/concepts/architecture">
+    Understand how the system works in depth
+  </Card>
+</CardGroup>

@@ -1,0 +1,361 @@
+---
+title: SVG Rendering
+description: How the dynamic SVG rendering system generates animated graphics
+---
+
+The rendering system transforms contribution data into animated SVG graphics using a CSS-in-JS approach with embedded HTML and foreignObject elements.
+
+## Core Rendering Function
+
+All SVG generation flows through a single `svg()` helper function in `src/render.ts`:
+
+```typescript
+const svg = (styles: string, html: string, attributes: Attributes) => {
+  if (!attributes.width) attributes.width = "100%";
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" ${attr(attributes)}>
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <style>${styles}</style>
+          ${html}
+        </div>
+      </foreignObject>
+    </svg>`;
+};
+```
+
+### Why foreignObject?
+
+Using SVG's `<foreignObject>` element allows embedding full HTML/CSS, enabling:
+- Modern CSS Grid and Flexbox layouts
+- Complex animations with keyframes
+- Responsive design with container queries
+- Custom font loading via base64 data URIs
+
+## CSS-in-JS Styling Approach
+
+Styles are generated as template literals and injected into the SVG:
+
+```typescript
+export const main = (props: Props & Main) => {
+  const styles = /*css*/ `
+    ${shared}  // Base styles shared across all components
+    
+    :root {
+      --rows: ${props.dots.rows};
+      --size-width: 100cqw;
+      --size-height: ${props.height};
+      --size-dot-gap: ${props.dots.gap};
+      --size-dot: ${props.dots.size};
+    }
+    
+    .wrapper {
+      contain: strict;
+      block-size: calc(var(--size-height) * 1px);
+      container-type: inline-size;
+    }
+  `;
+  
+  return svg(styles, html, { height: `${props.height}`, "data-theme": props.theme });
+};
+```
+
+### Shared Styles
+
+The `shared` constant contains global styles used across all components:
+
+- **Font Definitions**: Geist font family loaded via base64-encoded WOFF2/WOFF formats
+- **CSS Variables**: Theme colors, animation timings, and layout values
+- **Utility Classes**: `.fade-in`, `.shine`, `.grid`, `.label`
+- **Responsive Breakpoints**: `BP_MEDIUM = 550px`, `BP_LARGE = 700px`
+
+```typescript
+export const shared = /* css */ `
+  @font-face {
+    font-family: 'Geist';
+    src: url('data:font/woff2;charset=utf-8;base64,...');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+  }
+  
+  :root {
+    --color-black: #202020;
+    --color-white: #FFFFFF;
+    --default-delay: 1s;
+    --default-duration: 1.55s;
+    --default-stagger: 0.1s;
+  }
+`;
+```
+
+## Animation System
+
+Animations are orchestrated through CSS custom properties and keyframe animations.
+
+### Fade-In Animation
+
+All elements use a coordinated fade-in effect:
+
+```css
+.fade-in {
+  will-change: opacity;
+  animation-name: fade-in;
+  animation-fill-mode: both;
+  animation-duration: var(--duration, var(--default-duration));
+  animation-timing-function: var(--ease, ease-out);
+  animation-delay: var(--delay, var(--default-delay));
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+```
+
+### Staggered Animation Timing
+
+Elements animate in sequence using calculated delays:
+
+```typescript
+// Animation orchestration
+--animate-in-menu-delay: calc(var(--default-delay) + var(--default-stagger) * 0);
+--animate-in-links-delay: calc(var(--default-delay) + var(--default-stagger) * 1);
+--animate-in-contributions-delay: calc(var(--default-delay) + var(--default-stagger) * 5);
+--animate-in-graph-delay: calc(var(--default-delay) + var(--default-stagger) * 17);
+```
+
+Each character in the intro text animates individually:
+
+```typescript
+BODY_COPY.split("").map((c, i) => 
+  `<span class="fade-in" style="--i: ${i};">${c}</span>`
+)
+```
+
+### Shine Effect
+
+The contribution count uses a gradient animation:
+
+```css
+.shine {
+  background-color: var(--color-text);
+  background-image: linear-gradient(-75deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 15%,
+    transparent 25%
+  );
+  background-size: 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+  
+  animation-name: shine;
+  animation-duration: 14s;
+  animation-iteration-count: infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 200%; }
+  10% { background-position: 0%; }
+  to { background-position: 0%; }
+}
+```
+
+### Scrolling Graph Animation
+
+The contribution graph scrolls horizontally:
+
+```css
+.years {
+  animation-name: scroll, fade-in;
+  animation-timing-function: linear, ease-out;
+  animation-duration: calc(30s + (var(--_w) * 0.06s)), 2.5s;
+  animation-fill-mode: both, both;
+  animation-delay: 2s, var(--animate-in-graph-delay);
+}
+
+@keyframes scroll {
+  0% { transform: translateX(60px); }
+  100% { transform: translateX(calc(-100% + 100cqw)); }
+}
+```
+
+<Note>
+Animation duration scales with graph width to maintain consistent scroll speed regardless of data volume.
+</Note>
+
+## Theme Handling
+
+The system supports light and dark themes through CSS custom properties:
+
+```typescript
+[data-theme="dark"] {
+  --color-text: var(--color-text-dark);
+  --color-dot-bg-0: var(--color-dot-bg-0-dark);
+  --color-dot-bg-1: var(--color-dot-bg-1-dark);
+  --color-dot-bg-2: var(--color-dot-bg-2-dark);
+  --color-dot-bg-3: var(--color-dot-bg-3-dark);
+  --color-dot-bg-4: var(--color-dot-bg-4-dark);
+  --color-dot-border: var(--color-dot-border-dark);
+}
+
+[data-theme="light"] {
+  --color-text: var(--color-text-light);
+  --color-dot-bg-0: var(--color-dot-bg-0-light);
+  // ... other light theme variables
+}
+```
+
+### Contribution Level Colors
+
+Each contribution level maps to a specific color:
+
+```css
+.dot--0 { background-color: var(--color-dot-bg-0); }  /* No contributions */
+.dot--1 { background-color: var(--color-dot-bg-1); }  /* Low activity */
+.dot--2 { background-color: var(--color-dot-bg-2); }  /* Medium activity */
+.dot--3 { background-color: var(--color-dot-bg-3); }  /* High activity */
+.dot--4 { background-color: var(--color-dot-bg-4); }  /* Very high activity */
+```
+
+## Rendering Functions
+
+The system provides four main rendering functions:
+
+### 1. `main()` - Primary Contribution Graph
+
+Renders the full contribution history with animated scrolling:
+
+```typescript
+export const main = (props: Props & Main) => {
+  const html = `
+    <main class="wrapper grid">
+      <article class="intro">
+        <p>${BODY_COPY.split("").map((c, i) => 
+          `<span class="fade-in" style="--i: ${i};">${c}</span>`
+        ).join("")}</p>
+      </article>
+      <article class="graph">
+        <div class="years" style="--w: ${props.length}; --h: ${props.sizes[0][1]};">
+          ${props.years.map((year, i) => renderYear(year, i)).join("")}
+        </div>
+      </article>
+    </main>
+  `;
+  
+  return svg(styles, html, { height: `${props.height}`, "data-theme": props.theme });
+};
+```
+
+### 2. `top()` - Header Stats Bar
+
+Displays contribution count and navigation:
+
+```typescript
+export const top = (props: Props & { contributions: number }) => {
+  const html = `
+    <div class="wrapper grid label">
+      <div class="menu fade-in">Connect with me</div>
+      <div class="contributions fade-in">
+        <span class="shine">${(props.contributions / 1000).toFixed(1)}k</span> Contributions
+      </div>
+      <div class="readme fade-in">&lt;Svene/&gt;</div>
+    </div>
+  `;
+  
+  return svg(styles, html, { height: `${props.height}`, "data-theme": props.theme });
+};
+```
+
+### 3. `link()` - Animated Link Buttons
+
+Generates individual social media links with rotating arrows:
+
+```typescript
+export const link = (props: Props & { index: number }) => (label: string) => {
+  const html = `
+    <main class="wrapper">
+      <a class="link fade-in">
+        <div class="link__label shine">${label}</div>
+        <div class="link__arrow">↗</div>
+      </a>
+    </main>
+  `;
+  
+  return svg(styles, html, { 
+    width: `${props.width}`, 
+    height: `${props.height}`, 
+    "data-theme": props.theme 
+  });
+};
+```
+
+### 4. `fallback()` - Firefox Compatibility
+
+Provides a simplified view for browsers with limited SVG support:
+
+```typescript
+export const fallback = (props: Props & { width: number }) => {
+  const styles = `
+    .wrapper { display: none; }
+    @-moz-document url-prefix() {
+      .wrapper { display: flex; }
+    }
+  `;
+  // ... renders basic intro text
+};
+```
+
+<Warning>
+The main animation system uses features not fully supported in Firefox, so a fallback view is automatically shown to Firefox users.
+</Warning>
+
+## Performance Optimizations
+
+### CSS Containment
+
+Aggressive use of `contain` property improves rendering performance:
+
+```css
+.wrapper {
+  contain: strict;  /* Isolates layout, style, paint, and size */
+}
+
+.year {
+  contain: strict;
+  content-visibility: auto;  /* Only renders when in viewport */
+}
+```
+
+### Transform Optimization
+
+```css
+.years {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);  /* Force GPU acceleration */
+}
+```
+
+### Container Queries
+
+Responsive layouts use modern container queries:
+
+```css
+.wrapper {
+  container-type: inline-size;
+}
+
+@media (width > 550px) {
+  .intro {
+    grid-area: 1 / 3 / span 1 / span 4;
+    font-size: 22px;
+  }
+}
+```
+
+<Info>
+Container queries allow components to respond to their own size rather than viewport size, making them truly modular.
+</Info>

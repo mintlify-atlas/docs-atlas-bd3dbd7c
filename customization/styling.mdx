@@ -1,0 +1,470 @@
+---
+title: CSS Styling and Animations
+description: Deep dive into the CSS-in-JS styling system and animation framework
+---
+
+## Overview
+
+The GitHub profile README project uses a CSS-in-JS approach where styles are embedded directly in SVG `<foreignObject>` elements. This allows for dynamic styling with full CSS support including animations, custom properties, and media queries.
+
+## CSS-in-JS Architecture
+
+### SVG Wrapper Function
+
+All sections use a common SVG wrapper that injects styles:
+
+```typescript
+const svg = (styles: string, html: string, attributes: Attributes) => {
+  if (!attributes.width) attributes.width = "100%";
+  return `
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" ${attr(attributes)}>
+      <foreignObject width="100%" height="100%">
+        <div xmlns="http://www.w3.org/1999/xhtml">
+          <style>${styles}</style>
+          ${html}
+        </div>
+      </foreignObject>
+    </svg>`;
+};
+```
+
+Reference: `src/render.ts:89-100`
+
+### Shared Base Styles
+
+A comprehensive set of shared styles is defined once and reused across all sections:
+
+```typescript
+export const shared = /* css */ `
+  @font-face { ... }
+  :root { ... }
+  [data-theme="dark"] { ... }
+  [data-theme="light"] { ... }
+  /* Common styles */
+`;
+```
+
+Reference: `src/render.ts:102-290`
+
+### Section-Specific Styles
+
+Each section combines shared styles with its own custom CSS:
+
+```typescript
+const styles = /*css*/ `
+  ${shared}
+  
+  :root {
+    --size-height: ${props.height};
+    /* Section-specific variables */
+  }
+  
+  /* Section-specific styles */
+`;
+```
+
+Reference: `src/render.ts:308-428` (main section example)
+
+## Animation System
+
+The project features a sophisticated animation system with multiple effects.
+
+### Fade-In Animation
+
+The primary animation for revealing content:
+
+```css
+.fade-in {
+  will-change: opacity;
+  animation-name: fade-in;
+  animation-fill-mode: both;
+  animation-duration: var(--duration, var(--default-duration));
+  animation-timing-function: var(--ease, ease-out);
+  animation-delay: var(--delay, var(--default-delay));
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+```
+
+Reference: `src/render.ts:238-259`
+
+#### Animation Timing
+
+Default timing variables:
+
+```css
+:root {
+  --default-delay: 1s;
+  --default-duration: 1.55s;
+  --default-stagger: 0.1s;
+}
+```
+
+Reference: `src/render.ts:164-167`
+
+### Staggered Animations
+
+Animations are orchestrated with calculated delays:
+
+```css
+--animate-in-menu-delay: calc(var(--default-delay) + var(--default-stagger) * 0);
+--animate-in-links-delay: calc(var(--default-delay) + var(--default-stagger) * 1);
+--animate-in-contributions-delay: calc(var(--default-delay) + var(--default-stagger) * 5);
+--animate-in-readme-delay: calc(var(--default-delay) + var(--default-stagger) * 6);
+--animate-in-copy-delay: calc(var(--default-delay) + var(--default-stagger) * 7);
+--animate-in-graph-delay: calc(var(--default-delay) + var(--default-stagger) * 17);
+```
+
+Reference: `src/render.ts:169-176`
+
+#### Character-by-Character Animation
+
+Text is animated one character at a time:
+
+```typescript
+BODY_COPY.split("")
+  .map((c, i) => `<span class="fade-in" style="--i: ${i};">${c}</span>`)
+  .join("")
+```
+
+```css
+.intro span {
+  contain: content;
+  --duration: 980ms;
+  --delay: calc(var(--animate-in-copy-delay) + var(--i) * 10ms);
+}
+```
+
+Reference: `src/render.ts:446-448, 335-338`
+
+### Shine Animation
+
+A gradient shine effect for text:
+
+```css
+.shine {
+  background-color: var(--color-text);
+  background-image: linear-gradient(-75deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 15%,
+    transparent 25%
+  );
+  background-size: 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+
+  animation-name: shine;
+  animation-duration: 14s;
+  animation-iteration-count: infinite;
+}
+
+@keyframes shine {
+  0% {
+    background-position: 200%;
+  }
+  10% {
+    background-position: 0%;
+  }
+  to {
+    background-position: 0%;
+  }
+}
+```
+
+Reference: `src/render.ts:261-289`
+
+### Scroll Animation
+
+The contribution graph scrolls horizontally:
+
+```css
+.years {
+  animation-name: scroll, fade-in;
+  animation-timing-function: linear, ease-out;
+  animation-duration: calc(30s + (var(--_w) * 0.06s)), 2.5s;
+  animation-fill-mode: both, both;
+  animation-delay: 2s, var(--animate-in-graph-delay);
+}
+
+@keyframes scroll {
+  0% {
+    transform: translateX(60px);
+  }
+  100% {
+    transform: translateX(calc(-100% + 100cqw));
+  }
+}
+```
+
+Reference: `src/render.ts:371-384`
+
+**Key features:**
+- Duration scales with content width
+- Combines scroll and fade-in animations
+- Uses CSS container queries (100cqw)
+
+### Rotate Animation
+
+Link arrows rotate playfully:
+
+```css
+.link__arrow {
+  animation-name: rotate;
+  animation-duration: 5s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-delay: ${Math.random() * 5}s;
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  10%,
+  100% {
+    transform: rotate(360deg);
+  }
+}
+```
+
+Reference: `src/render.ts:577-596`
+
+**Features:**
+- Random delays for variety
+- Quick rotation (10% of duration)
+- Long pause between rotations
+
+## Performance Optimizations
+
+### CSS Containment
+
+Multiple containment strategies are used:
+
+```css
+/* Strict containment for wrapper */
+.wrapper {
+  contain: strict;
+}
+
+/* Content containment for text elements */
+.label {
+  contain: content;
+}
+
+/* Layout containment with auto-visibility */
+.year {
+  contain: strict;
+  content-visibility: auto;
+}
+```
+
+Reference: `src/render.ts:210, 228, 387-388`
+
+**Types of containment:**
+- `strict`: Size, layout, style, and paint containment
+- `content`: Layout, style, and paint containment
+- Combined with `content-visibility: auto` for lazy rendering
+
+### Hardware Acceleration
+
+```css
+.years {
+  will-change: transform;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+```
+
+Reference: `src/render.ts:367-369`
+
+### Container Queries
+
+The system uses container queries for responsive sizing:
+
+```css
+.wrapper {
+  container-type: inline-size;
+}
+
+/* Use container width */
+transform: translateX(calc(-100% + 100cqw));
+```
+
+Reference: `src/render.ts:212, 382`
+
+## Responsive Design
+
+### Breakpoints
+
+```typescript
+const BP_MEDIUM = 550;
+const BP_LARGE = 700;
+```
+
+### Media Queries
+
+```css
+@media (width > 550px) {
+  .intro {
+    grid-area: 1 / 3 / span 1 / span 4;
+    font-size: 22px;
+  }
+}
+
+@media (width > 700px) {
+  .intro {
+    grid-area: 1 / 4 / span 1 / span 3;
+  }
+}
+```
+
+Reference: `src/render.ts:340-350`
+
+## Custom Properties (CSS Variables)
+
+### Dynamic Variables
+
+Styles use custom properties for dynamic values:
+
+```css
+:root {
+  --rows: ${props.dots.rows};
+  --size-width: 100cqw;
+  --size-height: ${props.height};
+  --size-dot-gap: ${props.dots.gap};
+  --size-dot: ${props.dots.size};
+  --size-year-gap: ${props.year.gap};
+  --size-label-height: 20;
+}
+```
+
+Reference: `src/render.ts:311-318`
+
+### Calculated Values
+
+```css
+/* Dot grid dimensions */
+grid-template-rows: repeat(var(--rows), calc(var(--size-dot) * 1px));
+gap: calc(var(--size-dot-gap) * 1px);
+
+/* Border radius based on dot size */
+border-radius: calc(var(--size-dot) * 0.15 * 1px);
+```
+
+Reference: `src/render.ts:404-406, 420`
+
+## Browser-Specific Styling
+
+### Firefox Fallbacks
+
+Special handling for Firefox:
+
+```css
+/* Hide everything in Firefox by default - show fallback instead */
+@-moz-document url-prefix() {
+  .wrapper {
+    display: none;
+  }
+}
+```
+
+```css
+/* Allow specific sections in Firefox */
+@-moz-document url-prefix() {
+  .wrapper {
+    display: block;
+  }
+}
+```
+
+Reference: `src/render.ts:221-225, 561-565`
+
+## Modifying Styles
+
+### Changing Animation Speed
+
+Adjust timing variables:
+
+```css
+:root {
+  --default-delay: 0.5s;      /* Start sooner */
+  --default-duration: 1s;      /* Faster transitions */
+  --default-stagger: 0.05s;    /* Tighter sequence */
+}
+```
+
+### Customizing Dot Appearance
+
+Modify dot styling:
+
+```css
+.dot {
+  border-radius: 50%;  /* Circular instead of rounded square */
+  border: none;        /* Remove borders */
+}
+```
+
+### Adding New Animations
+
+1. Define the keyframes:
+```css
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+```
+
+2. Apply to elements:
+```css
+.element {
+  animation: bounce 2s ease-in-out infinite;
+}
+```
+
+### Typography Adjustments
+
+Change font sizes across breakpoints:
+
+```css
+.intro {
+  font-size: 16px;  /* Mobile */
+}
+
+@media (width > 550px) {
+  .intro {
+    font-size: 20px;  /* Tablet */
+  }
+}
+
+@media (width > 700px) {
+  .intro {
+    font-size: 24px;  /* Desktop */
+  }
+}
+```
+
+## Best Practices
+
+1. **Use CSS containment** for performance on large datasets
+2. **Leverage custom properties** for dynamic, theme-aware styling
+3. **Apply will-change sparingly** - only on animating elements
+4. **Use container queries** instead of viewport-based media queries when possible
+5. **Test animations** at different speeds using browser dev tools
+6. **Consider reduced motion** preferences for accessibility
+
+## Performance Tips
+
+1. **Avoid animating expensive properties** - stick to opacity and transform
+2. **Use `animation-fill-mode: both`** to prevent flashing
+3. **Apply `backface-visibility: hidden`** for smoother transforms
+4. **Use `content-visibility: auto`** for off-screen content
+5. **Batch style updates** by combining animations when possible

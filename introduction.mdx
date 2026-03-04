@@ -1,0 +1,256 @@
+---
+title: Introduction
+description: Create dynamic, animated SVG graphics for your GitHub profile README powered by Cloudflare Workers
+icon: rocket
+---
+
+## What is this project?
+
+This is a Cloudflare Workers application that generates **dynamic SVG images** for GitHub profile READMEs. It fetches your GitHub contribution data and renders beautiful, animated graphics that update automatically and support both dark and light themes.
+
+Instead of static images, your profile README displays server-rendered SVG graphics that:
+- Show your contribution history with animated graphs
+- Display social media links with smooth hover effects
+- Adapt to user theme preferences (dark/light mode)
+- Update automatically via GitHub Actions
+
+<Note>
+  The project uses **SVG with embedded CSS animations** and **foreignObject** elements to create rich, interactive graphics that work in GitHub's README renderer.
+</Note>
+
+## Key features
+
+<CardGroup cols={2}>
+  <Card title="Server-side SVG rendering" icon="paintbrush">
+    Generate SVG images on-demand using Cloudflare Workers with CSS-in-JS styling and animations
+  </Card>
+  
+  <Card title="GitHub contribution graphs" icon="chart-line">
+    Visualize up to 3 years of contribution history with animated dot matrix displays
+  </Card>
+  
+  <Card title="Theme support" icon="moon">
+    Built-in dark and light themes that respond to `prefers-color-scheme` media queries
+  </Card>
+  
+  <Card title="Multiple sections" icon="grid">
+    Modular design with separate sections: top bar, main graph, social links, and fallback
+  </Card>
+  
+  <Card title="WhatPulse integration" icon="keyboard">
+    Optional integration with WhatPulse API to display keyboard/mouse statistics
+  </Card>
+  
+  <Card title="Zero client-side JS" icon="bolt">
+    Pure SVG with CSS animations - no JavaScript required in the browser
+  </Card>
+</CardGroup>
+
+## Architecture overview
+
+The system consists of three main components:
+
+### 1. Data collection (GitHub Actions)
+
+A TypeScript script (`scripts/stats.ts`) fetches contribution data from GitHub's GraphQL API:
+
+```typescript
+export async function request(date: { from?: Date; to?: Date }) {
+  const body = {
+    query: `query ($username: String!, $from: DateTime, $to: DateTime) {
+      user(login: $username) {
+        contributionsCollection(from: $from, to: $to) {
+          contributionCalendar {
+            totalContributions
+            weeks {
+              contributionDays {
+                contributionCount
+                date
+                contributionLevel
+              }
+            }
+          }
+        }
+      }
+    }`,
+    variables: {
+      username: "aidrecabrera",
+      from: date.from?.toISOString(),
+      to: date.to?.toISOString(),
+    },
+  };
+  // ... fetch and return data
+}
+```
+
+The script:
+- Fetches up to 3 years of contribution history
+- Converts contribution levels to numeric values (0-4)
+- Stores data in `src/stats.json` for the worker to use
+- Runs automatically via GitHub Actions twice daily
+
+### 2. SVG rendering (Cloudflare Worker)
+
+The worker (`src/worker.ts`) handles HTTP requests and generates SVG images:
+
+```typescript
+const worker: ExportedHandler = {
+  async fetch(request, env, ctx) {
+    const { searchParams } = new URL(request.url);
+    const theme = (searchParams.get("theme") ?? "light") as "light" | "dark";
+    const section = searchParams.get("section") ?? "";
+    let content = ":--)";
+
+    if (section === "top") {
+      const { contributions } = data;
+      content = top({ height: 20, contributions, theme });
+    } else if (section === "link-resume") {
+      const index = Number(searchParams.get("i")) ?? 0;
+      content = link({ height: 18, width: 100, index, theme })("Resume");
+    } else {
+      // Main section with contribution graph
+      const years = data.years.slice(0, MAX_YEARS);
+      content = main({ height: 310, years, /* ... */ });
+    }
+
+    return new Response(content, {
+      headers: {
+        "content-type": "image/svg+xml",
+        "cache-control": "no-store, no-cache, must-revalidate",
+      },
+    });
+  },
+};
+```
+
+The worker supports multiple sections:
+- **top**: Header with menu, contribution count, and branding
+- **main**: Full contribution graph with animation
+- **link-[name]**: Social media link buttons
+- **fallback**: Firefox-compatible fallback (animations don't work in Firefox)
+
+### 3. Rendering functions (`src/render.ts`)
+
+The rendering module contains functions that generate SVG markup with embedded styles:
+
+```typescript
+export const main = (props: Props & Main) => {
+  const styles = /*css*/ `
+    ${shared}
+    :root {
+      --rows: ${props.dots.rows};
+      --size-dot: ${props.dots.size};
+      --size-dot-gap: ${props.dots.gap};
+    }
+    .years {
+      animation-name: scroll, fade-in;
+      animation-duration: calc(30s + (var(--_w) * 0.06s)), 2.5s;
+    }
+  `;
+  
+  const html = /* html */ `
+    <main class="wrapper grid">
+      <article class="intro">
+        <p>${BODY_COPY.split("")
+          .map((c, i) => `<span class="fade-in" style="--i: ${i};">${c}</span>`)
+          .join("")}</p>
+      </article>
+      <article class="graph">
+        <!-- contribution graph -->
+      </article>
+    </main>
+  `;
+  
+  return svg(styles, html, { height: `${props.height}`, "data-theme": theme });
+};
+```
+
+Key rendering features:
+- CSS custom properties for dynamic values
+- Keyframe animations for scrolling and fading
+- Embedded Geist font (base64 encoded)
+- Container queries for responsive layouts
+- Character-by-character text animation
+
+## Technology stack
+
+<CardGroup cols={2}>
+  <Card title="Cloudflare Workers" icon="cloud">
+    Edge runtime for serverless SVG generation with global distribution
+  </Card>
+  
+  <Card title="TypeScript" icon="code">
+    Type-safe code with support for Workers API types
+  </Card>
+  
+  <Card title="GitHub GraphQL API" icon="github">
+    Fetch contribution calendar data programmatically
+  </Card>
+  
+  <Card title="pnpm" icon="box">
+    Fast, efficient package manager
+  </Card>
+</CardGroup>
+
+## Project structure
+
+```
+.
+├── src/
+│   ├── worker.ts          # Main Cloudflare Worker handler
+│   ├── render.ts          # SVG rendering functions
+│   ├── types.d.ts         # TypeScript type definitions
+│   └── stats.json         # Generated contribution data (gitignored)
+├── scripts/
+│   └── stats.ts           # Data fetching script
+├── .github/
+│   └── workflows/         # GitHub Actions workflows
+├── package.json           # Dependencies and scripts
+├── wrangler.toml          # Cloudflare Workers configuration
+├── tsconfig.json          # TypeScript configuration
+└── biome.json             # Code formatter configuration
+```
+
+## How it works
+
+<Steps>
+  <Step title="Fetch contribution data">
+    GitHub Actions runs `pnpm stats` twice daily, fetching your contribution history from GitHub's GraphQL API and storing it in `src/stats.json`.
+  </Step>
+  
+  <Step title="Commit and deploy">
+    The workflow commits the updated stats file and deploys the worker to Cloudflare using `pnpm deploy`.
+  </Step>
+  
+  <Step title="Embed in README">
+    Your GitHub profile README includes `<picture>` elements with `<source>` tags for dark/light themes, pointing to your worker URL.
+  </Step>
+  
+  <Step title="Render on request">
+    When someone views your profile, GitHub requests the SVG image from your worker, which generates it on-demand with the latest data.
+  </Step>
+</Steps>
+
+<Info>
+  The SVG images are served with `cache-control: no-cache` headers to ensure they always reflect the latest data.
+</Info>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart guide" icon="bolt" href="/quickstart">
+    Get your own instance running in minutes
+  </Card>
+  
+  <Card title="Architecture deep dive" icon="diagram-project" href="/concepts/architecture">
+    Learn how each component works in detail
+  </Card>
+  
+  <Card title="Customize themes" icon="palette" href="/customization/themes">
+    Adapt colors and styling to match your brand
+  </Card>
+  
+  <Card title="API reference" icon="code" href="/api/overview">
+    Explore all available sections and parameters
+  </Card>
+</CardGroup>

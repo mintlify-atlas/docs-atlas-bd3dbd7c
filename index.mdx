@@ -1,97 +1,300 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: GitHub Profile README
+description: Create a dynamic, animated GitHub profile with SVG rendering powered by Cloudflare Workers
+mode: custom
 ---
 
-## Setting up
+<div className="relative overflow-hidden bg-[#020627] dark:bg-[#020627]">
+  {/* Hero Section */}
+  <div className="relative py-20 px-4 sm:px-6 lg:px-8">
+    <div className="max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        {/* Left Column - Text Content */}
+        <div className="lg:col-span-7 space-y-6">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white dark:text-white leading-tight">
+            Build a stunning GitHub profile
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-300 dark:text-gray-300 max-w-2xl">
+            Transform your GitHub profile with dynamic SVG graphics that showcase your contribution history, activity stats, and social links with beautiful animations.
+          </p>
+          <div className="flex flex-wrap gap-4 pt-4">
+            <a
+              href="/quickstart"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg bg-[#238636] text-white font-semibold hover:bg-[#2ea043] transition-colors"
+            >
+              Get Started
+            </a>
+            <a
+              href="/api/overview"
+              className="inline-flex items-center justify-center px-6 py-3 rounded-lg border border-white/30 bg-white/10 text-white font-semibold hover:bg-white/20 hover:border-white/50 transition-colors"
+            >
+              API Reference
+            </a>
+          </div>
+        </div>
+        
+        {/* Right Column - Demo/Visual */}
+        <div className="lg:col-span-5">
+          <div className="relative rounded-2xl border border-[#606392] bg-[#303649] p-6 shadow-xl">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-12 w-12 rounded-full bg-[#529c3a]"></div>
+                <div>
+                  <div className="h-4 w-32 rounded bg-white/20"></div>
+                  <div className="h-3 w-24 rounded bg-white/10 mt-2"></div>
+                </div>
+              </div>
+              <div className="h-32 rounded-lg bg-[#020627] border border-[#606392]/50 flex items-center justify-center">
+                <div className="text-center">
+                  <svg className="mx-auto h-8 w-8 text-[#529c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                  <p className="text-sm text-gray-400 mt-2">Dynamic SVG Rendering</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+{/* Quick Start Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Get started in minutes
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+      Follow these steps to deploy your own dynamic GitHub profile README
+    </p>
+  </div>
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
-</Card>
+  <Steps>
+    <Step title="Fork the repository">
+      Clone or fork the [aidrecabrera/aidrecabrera](https://github.com/aidrecabrera/aidrecabrera) repository to your GitHub account.
+      
+      ```bash
+      git clone https://github.com/aidrecabrera/aidrecabrera.git
+      cd aidrecabrera
+      ```
+    </Step>
 
-## Make it yours
+    <Step title="Install dependencies">
+      Install the required packages using your preferred package manager:
+      
+      <CodeGroup>
+      ```bash npm
+      npm install
+      ```
+      ```bash pnpm
+      pnpm install
+      ```
+      ```bash yarn
+      yarn install
+      ```
+      </CodeGroup>
+    </Step>
 
-Design a docs site that looks great and empowers your users.
+    <Step title="Configure environment variables">
+      Create a `.env` file with your GitHub token and Cloudflare credentials:
+      
+      ```env
+      GH_SECRET=your_github_token
+      CLOUDFLARE_API_TOKEN=your_cloudflare_token
+      CLOUDFLARE_ACCOUNT_ID=your_account_id
+      ```
+      
+      <Note>
+        You'll need a GitHub personal access token with `read:user` scope to fetch contribution data.
+      </Note>
+    </Step>
 
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
-  </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
-  </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
-  </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
+    <Step title="Deploy to Cloudflare Workers">
+      Deploy your worker using Wrangler:
+      
+      ```bash
+      pnpm deploy
+      ```
+      
+      Your worker will be deployed and you'll receive a URL like `https://aidre.svene.workers.dev/`
+    </Step>
 
-## Create beautiful pages
+    <Step title="Update your GitHub profile README">
+      Add the dynamic SVG images to your profile README:
+      
+      ```markdown
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="https://your-worker.workers.dev/?section=top&theme=dark">
+        <img src="https://your-worker.workers.dev/?section=top&theme=light" width="100%" height="20">
+      </picture>
+      ```
+    </Step>
+  </Steps>
+</div>
 
-Everything you need to create world-class documentation.
+{/* Features Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Powerful features
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+      Everything you need to create a stunning GitHub profile
+    </p>
+  </div>
 
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
+  <CardGroup cols={2}>
+    <Card title="Dynamic SVG rendering" icon="paintbrush" href="/concepts/rendering">
+      Server-side SVG generation with Cloudflare Workers for fast, responsive graphics
+    </Card>
+    <Card title="Contribution graphs" icon="chart-line" href="/concepts/contributions">
+      Visualize your GitHub activity with animated contribution calendar displays
+    </Card>
+    <Card title="Dark/light themes" icon="moon" href="/customization/themes">
+      Built-in support for dark and light color schemes that adapt to user preferences
+    </Card>
+    <Card title="Animated links" icon="link" href="/customization/sections">
+      Eye-catching social media links with smooth hover animations
+    </Card>
+    <Card title="Auto-updates" icon="rotate" href="/deployment/workflows">
+      GitHub Actions workflow updates your stats twice daily automatically
+    </Card>
+    <Card title="Custom styling" icon="palette" href="/customization/styling">
+      Fully customizable CSS-in-JS styling with your brand colors and fonts
+    </Card>
+  </CardGroup>
+</div>
 
-## Need inspiration?
+{/* Architecture Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      How it works
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+      Built on modern edge infrastructure for speed and reliability
+    </p>
+  </div>
 
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div className="p-6 rounded-2xl border border-gray-200 dark:border-[#606392] bg-white dark:bg-[#303649]">
+      <div className="h-12 w-12 rounded-lg bg-[#529c3a]/10 dark:bg-[#529c3a]/20 flex items-center justify-center mb-4">
+        <svg className="h-6 w-6 text-[#529c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        Fetch data
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400">
+        GitHub Actions runs a script that fetches your contribution history and WhatPulse stats
+      </p>
+    </div>
+
+    <div className="p-6 rounded-2xl border border-gray-200 dark:border-[#606392] bg-white dark:bg-[#303649]">
+      <div className="h-12 w-12 rounded-lg bg-[#529c3a]/10 dark:bg-[#529c3a]/20 flex items-center justify-center mb-4">
+        <svg className="h-6 w-6 text-[#529c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        Render SVG
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400">
+        Cloudflare Workers generates SVG graphics on-demand with CSS animations and custom styling
+      </p>
+    </div>
+
+    <div className="p-6 rounded-2xl border border-gray-200 dark:border-[#606392] bg-white dark:bg-[#303649]">
+      <div className="h-12 w-12 rounded-lg bg-[#529c3a]/10 dark:bg-[#529c3a]/20 flex items-center justify-center mb-4">
+        <svg className="h-6 w-6 text-[#529c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+        </svg>
+      </div>
+      <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+        Display live
+      </h3>
+      <p className="text-gray-600 dark:text-gray-400">
+        Your README embeds the SVG images that update dynamically based on user theme preferences
+      </p>
+    </div>
+  </div>
+</div>
+
+{/* Explore Topics Section */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="text-center mb-12">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Explore the documentation
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
+      Deep dive into concepts, customization, and deployment
+    </p>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <a href="/concepts/architecture" className="group block rounded-2xl border border-gray-200 dark:border-[#606392] hover:border-[#848c8e] dark:hover:border-[#848c8e] bg-white dark:bg-[#303649] overflow-hidden no-underline transition-colors">
+      <div className="h-48 bg-gradient-to-br from-[#529c3a]/20 to-[#238636]/20 flex items-center justify-center">
+        <svg className="h-16 w-16 text-[#529c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+        </svg>
+      </div>
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Architecture overview
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Learn how the system works, from data fetching to SVG rendering
+        </p>
+        <div className="flex items-center text-sm font-medium text-[#848c8e] group-hover:text-[#848c8e]">
+          Read more
+          <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+
+    <a href="/customization/themes" className="group block rounded-2xl border border-gray-200 dark:border-[#606392] hover:border-[#848c8e] dark:hover:border-[#848c8e] bg-white dark:bg-[#303649] overflow-hidden no-underline transition-colors">
+      <div className="h-48 bg-gradient-to-br from-[#238636]/20 to-[#529c3a]/20 flex items-center justify-center">
+        <svg className="h-16 w-16 text-[#529c3a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+        </svg>
+      </div>
+      <div className="p-6">
+        <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+          Customize your style
+        </h3>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+          Configure colors, fonts, and animations to match your brand
+        </p>
+        <div className="flex items-center text-sm font-medium text-[#848c8e] group-hover:text-[#848c8e]">
+          Get started
+          <svg className="ml-1 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{/* CTA Banner */}
+<div className="mt-16 mb-16 max-w-5xl mx-auto px-6">
+  <div className="rounded-2xl border border-gray-200 dark:border-[#606392] bg-gradient-to-br from-[#529c3a]/10 to-[#238636]/10 dark:from-[#529c3a]/20 dark:to-[#238636]/20 p-8 sm:p-12 text-center">
+    <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+      Ready to build your profile?
+    </h2>
+    <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto mb-8">
+      Follow the quickstart guide to deploy your own dynamic GitHub profile in minutes
+    </p>
+    <a
+      href="/quickstart"
+      className="inline-flex items-center justify-center px-8 py-3 rounded-lg bg-[#238636] text-white font-semibold hover:bg-[#2ea043] transition-colors"
+    >
+      Get Started Now
+    </a>
+  </div>
+</div>

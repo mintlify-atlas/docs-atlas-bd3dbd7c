@@ -1,0 +1,200 @@
+---
+title: main()
+description: Renders the contribution graph with animated scrolling visualization
+---
+
+The `main()` function generates the primary SVG graphic featuring an animated contribution graph that displays GitHub activity over multiple years.
+
+## Function Signature
+
+```typescript
+export const main = (props: Props & Main) => string
+```
+
+## Type Definitions
+
+### Props
+
+```typescript
+interface Props {
+  width?: number;
+  height: number;
+  theme: "light" | "dark";
+}
+```
+
+### Main
+
+```typescript
+type Main = {
+  years: Year[];
+  sizes: number[][];
+  length: number;
+  location: { city: string; country: string };
+  dots: {
+    rows: number;
+    size: number;
+    gap: number;
+  };
+  year: {
+    gap: number;
+  };
+};
+```
+
+### Year
+
+```typescript
+type Year = {
+  from: string;
+  to: string;
+  days: number[];
+};
+```
+
+## Parameters
+
+<ParamField path="height" type="number" required>
+  The height of the SVG in pixels
+</ParamField>
+
+<ParamField path="theme" type="'light' | 'dark'" required>
+  Color theme for the visualization
+</ParamField>
+
+<ParamField path="years" type="Year[]" required>
+  Array of year objects containing contribution data
+</ParamField>
+
+<ParamField path="sizes" type="number[][]" required>
+  Pre-calculated dimensions for each year's contribution grid `[width, height]`
+</ParamField>
+
+<ParamField path="length" type="number" required>
+  Total width of all years combined including gaps
+</ParamField>
+
+<ParamField path="location" type="object" required>
+  User's geographic location
+  - `city`: City name
+  - `country`: Country code
+</ParamField>
+
+<ParamField path="dots" type="object" required>
+  Configuration for contribution dots
+  - `rows`: Number of rows in the grid (typically 6 for days of week)
+  - `size`: Size of each dot in pixels
+  - `gap`: Spacing between dots in pixels
+</ParamField>
+
+<ParamField path="year" type="object" required>
+  Configuration for year spacing
+  - `gap`: Gap between year sections in pixels
+</ParamField>
+
+## What It Renders
+
+The `main()` function renders a GitHub-style contribution graph with:
+
+- **Animated scrolling**: The graph automatically scrolls from right to left
+- **Contribution dots**: Color-coded squares representing activity levels (0-4)
+- **Year labels**: Displays years and current date
+- **Intro text**: Displays the profile bio with fade-in animation
+- **Responsive layout**: Adapts to different container widths using container queries
+
+## Real Usage Example
+
+From `worker.ts:81-89`:
+
+```typescript
+const years = data.years.slice(0, MAX_YEARS);
+const options = {
+  dots: { rows: 6, size: 24, gap: 5 },
+  year: { gap: 5 },
+};
+
+// Calculate sizes for performance optimization
+const sizes = years.map((year) => {
+  const columns = Math.ceil(year.days.length / options.dots.rows);
+  const width = columns * options.dots.size + (columns - 1) * options.dots.gap;
+  const height = options.dots.rows * options.dots.size + 
+                 (options.dots.rows - 1) * options.dots.gap;
+  return [width, height];
+});
+
+const length = sizes.reduce((acc, size) => {
+  acc += size[0] + options.year.gap;
+  return acc;
+}, 0) - options.year.gap;
+
+content = main({
+  height: 310,
+  years,
+  sizes,
+  length,
+  location: {
+    city: request.cf?.city || "",
+    country: request.cf?.country || "",
+  },
+  theme,
+  ...options,
+});
+```
+
+## CSS Styling
+
+The function includes extensive CSS with:
+
+### CSS Custom Properties
+
+```css
+--rows: /* Number of rows in grid */
+--size-dot: /* Dot size in pixels */
+--size-dot-gap: /* Gap between dots */
+--size-year-gap: /* Gap between years */
+```
+
+### Theme-Aware Colors
+
+```css
+/* Light theme */
+--color-dot-bg-0-light: #ffffff; /* No contributions */
+--color-dot-bg-1-light: #e0e0e0;
+--color-dot-bg-2-light: #b0b0b0;
+--color-dot-bg-3-light: #808080;
+--color-dot-bg-4-light: #202020; /* Most contributions */
+
+/* Dark theme */
+--color-dot-bg-0-dark: #262626;
+--color-dot-bg-1-dark: #404040;
+--color-dot-bg-2-dark: #686868;
+--color-dot-bg-3-dark: #a0a0a0;
+--color-dot-bg-4-dark: #ffffff;
+```
+
+### Animations
+
+**Scroll Animation**: The graph scrolls horizontally with timing based on content width:
+
+```css
+animation-duration: calc(30s + (var(--_w) * 0.06s));
+```
+
+**Text Fade-In**: Bio text appears character-by-character:
+
+```css
+--delay: calc(var(--animate-in-copy-delay) + var(--i) * 10ms);
+```
+
+### Performance Optimizations
+
+- Uses `contain: strict` for layout containment
+- Implements `content-visibility: auto` for off-screen rendering
+- Grid-based layout with CSS Grid for efficient painting
+- Hardware-accelerated transforms with `translateZ(0)`
+
+## Returns
+
+**Type**: `string`
+
+Returns a complete SVG string with embedded styles and HTML content wrapped in a `<foreignObject>` element.

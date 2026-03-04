@@ -1,0 +1,190 @@
+---
+title: top()
+description: Renders the top navigation bar with contribution stats
+---
+
+The `top()` function generates the header bar SVG that displays navigation labels and contribution statistics with animated shine effects.
+
+## Function Signature
+
+```typescript
+export const top = (
+  props: Props & { contributions: number },
+  pulse?: PulseStats
+) => string
+```
+
+## Type Definitions
+
+### Props
+
+```typescript
+interface Props {
+  width?: number;
+  height: number;
+  theme: "light" | "dark";
+}
+```
+
+### PulseStats
+
+```typescript
+interface PulseStats {
+  GeneratedTime: string;
+  UserID: string;
+  AccountName: string;
+  Country: string;
+  tld: string;
+  DateJoined: string;
+  DateJoinedUnixTimestamp: string;
+  Homepage: string;
+  LastPulse: string;
+  LastPulseUnixTimestamp: string;
+  Pulses: string;
+  Keys: string;
+  Clicks: string;
+  Scrolls: string;
+  DistanceInMiles: string;
+  Download: string;
+  Upload: string;
+  DownloadMB: number;
+  UploadMB: number;
+  UptimeSeconds: string;
+  UptimeShort: string;
+  UptimeLong: string;
+  AvKeysPerPulse: string;
+  AvClicksPerPulse: string;
+  AvKPS: number;
+  AvCPS: number;
+  Ranks: Ranks;
+  Team: string;
+  Computers: Computers;
+}
+```
+
+## Parameters
+
+<ParamField path="height" type="number" required>
+  The height of the SVG in pixels
+</ParamField>
+
+<ParamField path="theme" type="'light' | 'dark'" required>
+  Color theme for the visualization
+</ParamField>
+
+<ParamField path="contributions" type="number" required>
+  Total number of GitHub contributions to display
+</ParamField>
+
+<ParamField path="pulse" type="PulseStats">
+  Optional WakaTime Pulse statistics (currently unused but available for future integration)
+</ParamField>
+
+## What It Renders
+
+The `top()` function renders a three-column header bar with:
+
+- **Left**: "Connect with me" label
+- **Center**: Contribution count with animated shine effect (e.g., "12.5k Contributions")
+- **Right**: Profile identifier ("<Svene/>")
+
+The layout is responsive and adjusts column spans at different breakpoints:
+- Small screens: 2-2-2 column distribution
+- Medium screens (>550px): 2-2-2 with visible center section
+- Large screens (>700px): 3-2-1 column distribution
+
+## Real Usage Example
+
+From `worker.ts:22-24`:
+
+```typescript
+if (section === "top") {
+  const { contributions } = data;
+  content = top({ height: 20, contributions, theme });
+}
+```
+
+### Usage in GitHub README
+
+```markdown
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://readme.aidre.com/?section=top&theme=dark">
+  <source media="(prefers-color-scheme: light)" srcset="https://readme.aidre.com/?section=top&theme=light">
+  <img alt="Profile Header" src="https://readme.aidre.com/?section=top">
+</picture>
+```
+
+## PulseStats Integration
+
+While the `pulse` parameter is currently optional and unused in the top bar rendering, it's available for future enhancements. The `PulseStats` interface provides access to:
+
+- Coding statistics (keys, clicks, scrolls)
+- Network usage (download/upload)
+- Computer uptime data
+- Activity averages and rankings
+
+For a complete implementation using PulseStats, see the [`pulse()`](/api/pulse) function.
+
+## CSS Features
+
+### Responsive Grid Layout
+
+```css
+.menu {
+  grid-area: 1 / 1 / span 1 / span 2;
+}
+.contributions {
+  grid-area: 1 / 3 / span 1 / span 2;
+  contain: strict; /* Hidden on small screens */
+}
+.readme {
+  grid-area: 1 / 5 / span 1 / span 2;
+}
+
+@media (width > 550px) {
+  .contributions {
+    contain: content; /* Visible on medium+ screens */
+  }
+}
+```
+
+### Shine Animation
+
+The contribution count features an animated gradient shine effect:
+
+```css
+.shine {
+  background-image: linear-gradient(-75deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.18) 15%,
+    transparent 25%
+  );
+  animation: shine 14s infinite;
+}
+
+@keyframes shine {
+  0% { background-position: 200%; }
+  10% { background-position: 0%; }
+  to { background-position: 0%; }
+}
+```
+
+### Staggered Fade-In
+
+Each section fades in with a staggered delay:
+
+```css
+--animate-in-menu-delay: calc(var(--default-delay) + var(--default-stagger) * 0);
+--animate-in-contributions-delay: calc(var(--default-delay) + var(--default-stagger) * 5);
+--animate-in-readme-delay: calc(var(--default-delay) + var(--default-stagger) * 6);
+```
+
+## Returns
+
+**Type**: `string`
+
+Returns a complete SVG string with:
+- Embedded CSS styles
+- Responsive grid layout
+- Animated text with shine effects
+- Theme-aware color variables

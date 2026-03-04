@@ -1,0 +1,221 @@
+---
+title: 'Available Sections'
+description: 'Complete reference for all API section types and endpoints'
+---
+
+## Section Types
+
+The API provides multiple section types via the `section` query parameter. Each section renders different content and has specific dimensions.
+
+## Top Section
+
+The header section displays navigation, contribution count, and your name/brand.
+
+**Section Value**: `top`
+
+**Dimensions**: 100% width × 20px height
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=top&theme=dark
+```
+
+**Displays**:
+- "Connect with me" label (left)
+- Contribution count with shine effect (center, hidden on mobile)
+- Your name/brand (right)
+
+**Usage in README**:
+
+```markdown
+![Header](https://your-worker-domain.workers.dev/?section=top&theme=dark)
+```
+
+---
+
+## Main Section
+
+The default section showing your contribution graph and bio text.
+
+**Section Value**: *omit the section parameter* or empty string
+
+**Dimensions**: 100% width × 310px height
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?theme=dark
+```
+
+**Displays**:
+- Animated contribution heatmap with scrolling animation
+- Bio text: "Aidre Cabrera—an autodidact aspirant who loves coding, writing, and learning."
+- Year labels with date information
+- Location-aware content (city and country from request)
+
+**Features**:
+- 6-row contribution grid
+- 24px dot size with 5px gaps
+- 5 intensity levels (0-4) with themed colors
+- Smooth horizontal scrolling animation
+- Character-by-character fade-in for bio text
+
+**Usage in README**:
+
+```markdown
+![Profile](https://your-worker-domain.workers.dev/?theme=light)
+```
+
+---
+
+## Link Sections
+
+Social media and website link buttons with animated arrows.
+
+### Resume Link
+
+**Section Value**: `link-resume`
+
+**Dimensions**: 100px × 18px
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-resume&theme=dark&i=0
+```
+
+### Website Link
+
+**Section Value**: `link-website`
+
+**Dimensions**: 100px × 18px
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-website&theme=dark&i=1
+```
+
+### LinkedIn Link
+
+**Section Value**: `link-linkedin`
+
+**Dimensions**: 100px × 18px
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-linkedin&theme=dark&i=2
+```
+
+### Facebook Link
+
+**Section Value**: `link-facebook`
+
+**Dimensions**: 100px × 18px
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-facebook&theme=dark&i=3
+```
+
+### Instagram Link
+
+**Section Value**: `link-instagram`
+
+**Dimensions**: 100px × 20px (slightly taller)
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-instagram&theme=dark&i=4
+```
+
+### Twitter Link
+
+**Section Value**: `link-twitter`
+
+**Dimensions**: 100px × 18px
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-twitter&theme=dark&i=5
+```
+
+**Link Features**:
+- Shine text effect
+- Rotating arrow animation (↗)
+- Staggered fade-in based on index
+- Random animation delays for variety
+
+**Usage in README**:
+
+```markdown
+[![Resume](https://your-worker-domain.workers.dev/?section=link-resume&theme=dark&i=0)](https://your-resume-url.com)
+[![Website](https://your-worker-domain.workers.dev/?section=link-website&theme=dark&i=1)](https://yourwebsite.com)
+[![LinkedIn](https://your-worker-domain.workers.dev/?section=link-linkedin&theme=dark&i=2)](https://linkedin.com/in/username)
+```
+
+---
+
+## Fallback Section
+
+Special section for Firefox browser compatibility with simplified content.
+
+**Section Value**: `fallback`
+
+**Dimensions**: 420px × 180px
+
+**Example Request**:
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=fallback&theme=dark
+```
+
+**Displays**:
+- Bio text with character-by-character fade-in
+- Browser compatibility hint message
+- Optimized for Firefox rendering
+
+**Usage**:
+
+This section is automatically shown to Firefox users while other sections are hidden. You typically don't need to reference it directly.
+
+---
+
+## Complete Example
+
+Here's a full GitHub README using all sections:
+
+```markdown
+<!-- Header -->
+![Header](https://your-worker-domain.workers.dev/?section=top&theme=dark)
+
+<!-- Main Profile -->
+![Profile](https://your-worker-domain.workers.dev/?theme=dark)
+
+<!-- Social Links -->
+[![Resume](https://your-worker-domain.workers.dev/?section=link-resume&theme=dark&i=0)](https://resume.com)
+[![Website](https://your-worker-domain.workers.dev/?section=link-website&theme=dark&i=1)](https://website.com)
+[![LinkedIn](https://your-worker-domain.workers.dev/?section=link-linkedin&theme=dark&i=2)](https://linkedin.com/in/user)
+
+<!-- Fallback for Firefox -->
+![Fallback](https://your-worker-domain.workers.dev/?section=fallback&theme=dark)
+```
+
+## Section Summary
+
+| Section | Parameter Value | Width | Height | Use Case |
+|---------|----------------|-------|--------|----------|
+| Top | `top` | 100% | 20px | Header navigation |
+| Main | *(empty)* | 100% | 310px | Main profile content |
+| Resume Link | `link-resume` | 100px | 18px | Resume button |
+| Website Link | `link-website` | 100px | 18px | Website button |
+| LinkedIn Link | `link-linkedin` | 100px | 18px | LinkedIn button |
+| Facebook Link | `link-facebook` | 100px | 18px | Facebook button |
+| Instagram Link | `link-instagram` | 100px | 20px | Instagram button |
+| Twitter Link | `link-twitter` | 100px | 18px | Twitter button |
+| Fallback | `fallback` | 420px | 180px | Firefox compatibility |

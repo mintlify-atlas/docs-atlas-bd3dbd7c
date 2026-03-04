@@ -1,0 +1,380 @@
+---
+title: GitHub Actions Workflows
+description: Automated deployment and data updates using GitHub Actions
+---
+
+## Overview
+
+The project uses GitHub Actions to automate data updates and deployments. Two workflow files handle continuous integration and automated regeneration of GitHub statistics.
+
+## Workflow Files
+
+### Regeneration Workflow
+
+Location: `.github/workflows/deploy.yaml`
+
+This workflow automatically fetches fresh GitHub contribution data and deploys to Cloudflare Workers.
+
+```yaml
+name: regenerate
+
+on:
+  push:
+    branches:
+      - main
+
+  schedule:
+    # schedule to run at 00:00 and 12:00 every day
+    - cron: '0 0,12 * * *'
+
+jobs:
+  run-pnpm-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: checkout repository
+        uses: actions/checkout@v3
+
+      - name: setup pnpm
+        uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 10.6.5
+
+      - name: set up node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.8.1
+          cache: 'pnpm'
+
+      - name: install dependencies
+        run: pnpm install
+
+      - name: fetch stats
+        run: pnpm stats
+        env:
+          GH_SECRET: ${{ secrets.GH_SECRET }}
+
+      - name: deploy
+        uses: cloudflare/wrangler-action@v3.7.0
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```
+
+### CI Workflow
+
+Location: `.github/workflows/ci.yaml`
+
+This workflow runs on every push to validate code quality.
+
+```yaml
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  run-pnpm-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4.0.0
+        with:
+          version: 10.6.5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.8.1
+          cache: 'pnpm'
+
+      - run: pnpm install
+      # - run: pnpm types
+      - run: pnpm lint
+```
+
+## Scheduled Updates
+
+### Cron Schedule
+
+The regeneration workflow runs automatically twice a day:
+
+```yaml
+schedule:
+  # schedule to run at 00:00 and 12:00 every day
+  - cron: '0 0,12 * * *'
+```
+
+**Cron Expression**: `0 0,12 * * *`
+
+- `0` - At minute 0 (top of the hour)
+- `0,12` - At hours 0 (midnight) and 12 (noon)
+- `* * *` - Every day of the month, every month, every day of the week
+
+### Customizing the Schedule
+
+You can modify the cron expression to change update frequency:
+
+**Every 6 hours**:
+```yaml
+schedule:
+  - cron: '0 */6 * * *'
+```
+
+**Once daily at midnight UTC**:
+```yaml
+schedule:
+  - cron: '0 0 * * *'
+```
+
+**Every hour**:
+```yaml
+schedule:
+  - cron: '0 * * * *'
+```
+
+**Weekly on Mondays at 9 AM UTC**:
+```yaml
+schedule:
+  - cron: '0 9 * * 1'
+```
+
+Use [crontab.guru](https://crontab.guru/) to validate and understand cron expressions.
+
+## Workflow Steps Explained
+
+### 1. Checkout Repository
+
+```yaml
+- name: checkout repository
+  uses: actions/checkout@v3
+```
+
+Clones your repository so the workflow can access your code.
+
+### 2. Setup pnpm
+
+```yaml
+- name: setup pnpm
+  uses: pnpm/action-setup@v4.0.0
+  with:
+    version: 10.6.5
+```
+
+Installs pnpm version 10.6.5 as specified in `package.json`:
+
+```json
+"packageManager": "pnpm@10.6.5"
+```
+
+### 3. Setup Node.js
+
+```yaml
+- name: set up node.js
+  uses: actions/setup-node@v4
+  with:
+    node-version: 20.8.1
+    cache: 'pnpm'
+```
+
+Installs Node.js 20.8.1 and caches pnpm dependencies for faster builds.
+
+### 4. Install Dependencies
+
+```yaml
+- name: install dependencies
+  run: pnpm install
+```
+
+Installs all project dependencies defined in `package.json`.
+
+### 5. Fetch GitHub Statistics
+
+```yaml
+- name: fetch stats
+  run: pnpm stats
+  env:
+    GH_SECRET: ${{ secrets.GH_SECRET }}
+```
+
+Runs the stats generation script that:
+- Fetches GitHub contribution data via GraphQL API
+- Fetches WhatPulse statistics
+- Writes data to `src/stats.json` and `src/pulse.json`
+
+The `GH_SECRET` environment variable authenticates with GitHub.
+
+### 6. Deploy to Cloudflare
+
+```yaml
+- name: deploy
+  uses: cloudflare/wrangler-action@v3.7.0
+  with:
+    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```
+
+Uses the official Cloudflare Wrangler action to deploy the worker with updated data.
+
+## Workflow Triggers
+
+### Push to Main Branch
+
+```yaml
+on:
+  push:
+    branches:
+      - main
+```
+
+The workflow runs automatically when you push commits to the `main` branch.
+
+### Manual Trigger
+
+To run the workflow manually, add:
+
+```yaml
+on:
+  workflow_dispatch:
+```
+
+Then trigger it from the GitHub Actions tab:
+
+1. Go to **Actions** in your repository
+2. Select the workflow
+3. Click **Run workflow**
+
+## Data Generated
+
+The `pnpm stats` command generates:
+
+### src/stats.json
+
+Contains GitHub contribution data:
+
+```json
+{
+  "years": [
+    {
+      "from": "2024-03-04T00:00:00.000Z",
+      "to": "2025-01-01T00:00:00.000Z",
+      "days": [0, 1, 2, 3, 4, ...]
+    }
+  ],
+  "contributions": 1234
+}
+```
+
+### src/pulse.json
+
+Contains WhatPulse statistics (keyboard/mouse activity).
+
+## Environment Variables
+
+The workflows require these GitHub secrets:
+
+- `GH_SECRET` - GitHub Personal Access Token
+- `CLOUDFLARE_API_TOKEN` - Cloudflare API token
+- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
+
+See [Environment Variables](/deployment/environment-variables) for setup instructions.
+
+## Monitoring Workflows
+
+### View Workflow Runs
+
+1. Go to your repository on GitHub
+2. Click the **Actions** tab
+3. View recent workflow runs, logs, and status
+
+### Email Notifications
+
+GitHub automatically sends email notifications when workflows fail. Configure this in your [GitHub notification settings](https://github.com/settings/notifications).
+
+### Workflow Status Badge
+
+Add a status badge to your README:
+
+```markdown
+![Deploy](https://github.com/username/repo/actions/workflows/deploy.yaml/badge.svg)
+```
+
+## Troubleshooting
+
+### Workflow Fails on "fetch stats" Step
+
+**Cause**: Invalid or missing `GH_SECRET`.
+
+**Solution**:
+- Verify the secret is set in repository settings
+- Ensure the token has `read:user` scope
+- Check if the token has expired
+
+### Workflow Fails on "deploy" Step
+
+**Cause**: Invalid Cloudflare credentials.
+
+**Solution**:
+- Verify `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` are set
+- Check the API token has Workers Scripts edit permissions
+- Ensure the account ID matches your Cloudflare account
+
+### Workflow Doesn't Trigger on Schedule
+
+**Causes**:
+- Scheduled workflows may be delayed during high GitHub load
+- Repository must have recent activity (push within 60 days)
+- Default branch must be `main` (or update workflow branch filter)
+
+**Solution**:
+- Wait 10-15 minutes after the scheduled time
+- Make a commit to ensure repository is active
+- Manually trigger the workflow to test
+
+### Dependency Installation Fails
+
+**Cause**: Package version conflicts or network issues.
+
+**Solution**:
+- Update dependencies: `pnpm update`
+- Clear cache by re-running the workflow
+- Check pnpm and Node.js versions match `package.json`
+
+## Best Practices
+
+### Caching
+
+The workflows use pnpm caching for faster builds:
+
+```yaml
+- uses: actions/setup-node@v4
+  with:
+    cache: 'pnpm'
+```
+
+### Version Pinning
+
+Pin specific versions for reproducibility:
+
+```yaml
+pnpm/action-setup@v4.0.0
+node-version: 20.8.1
+```
+
+### Error Handling
+
+Workflows fail fast by default. Add error handling if needed:
+
+```yaml
+- name: fetch stats
+  run: pnpm stats
+  continue-on-error: false
+```
+
+## Next Steps
+
+- Configure [Environment Variables](/deployment/environment-variables)
+- Set up [Cloudflare Workers Deployment](/deployment/cloudflare)
+- Customize the cron schedule for your needs
+- Monitor workflow runs in the GitHub Actions tab

@@ -1,0 +1,151 @@
+---
+title: Cloudflare Workers Deployment
+description: Deploy your GitHub profile README to Cloudflare Workers
+---
+
+## Overview
+
+This project deploys to Cloudflare Workers, a serverless platform that runs your code at the edge. The worker serves dynamically generated SVG images for your GitHub profile README.
+
+## Prerequisites
+
+Before deploying, ensure you have:
+
+- A [Cloudflare account](https://dash.cloudflare.com/sign-up)
+- [Node.js](https://nodejs.org/) installed (version 20.8.1 or later)
+- [pnpm](https://pnpm.io/) package manager installed
+- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/install-and-update/) configured
+
+## Wrangler Configuration
+
+The project uses Wrangler to manage Cloudflare Workers deployments. The configuration is stored in `wrangler.toml`:
+
+```toml
+name = "aidre"
+main = "src/worker.ts"
+compatibility_date = "2023-11-21"
+```
+
+### Configuration Options
+
+- **name**: The name of your worker (appears in Cloudflare dashboard)
+- **main**: Entry point for your worker code
+- **compatibility_date**: Cloudflare Workers compatibility date
+
+## Local Development
+
+Start the development server locally:
+
+```bash
+pnpm start
+```
+
+This runs `wrangler dev` and starts a local server where you can test your worker before deployment.
+
+## Deployment Process
+
+### Manual Deployment
+
+To deploy manually from your local machine:
+
+1. Generate the latest GitHub contribution stats:
+
+```bash
+pnpm stats
+```
+
+2. Deploy to Cloudflare Workers:
+
+```bash
+pnpm deploy
+```
+
+The `deploy` script automatically runs `pnpm stats` before deploying to ensure your data is up-to-date.
+
+### Automated Deployment
+
+The project uses GitHub Actions for automated deployments. See the [Workflows](/deployment/workflows) page for details on automated deployments.
+
+## Wrangler Authentication
+
+For local deployments, you need to authenticate Wrangler with your Cloudflare account:
+
+```bash
+wrangler login
+```
+
+This opens a browser window where you can authorize Wrangler to access your Cloudflare account.
+
+Alternatively, use an API token:
+
+```bash
+wrangler config set api_token <your-api-token>
+```
+
+## Custom Domain Setup
+
+### Adding a Custom Domain
+
+1. Go to your [Cloudflare Workers dashboard](https://dash.cloudflare.com/)
+2. Select your worker
+3. Navigate to **Settings** > **Triggers**
+4. Under **Custom Domains**, click **Add Custom Domain**
+5. Enter your domain (e.g., `aidre.svene.workers.dev` or your own domain)
+6. Follow the DNS configuration instructions
+
+### Workers.dev Subdomain
+
+By default, Cloudflare provides a `*.workers.dev` subdomain. You can customize this in the Cloudflare dashboard under your worker's triggers.
+
+### Using Your Own Domain
+
+If you have a domain managed by Cloudflare:
+
+1. Ensure your domain is added to Cloudflare
+2. Add a custom domain in the Workers dashboard
+3. Cloudflare automatically configures the DNS records
+
+## Environment Variables
+
+For production deployment, configure the required environment variables in your GitHub repository secrets. See [Environment Variables](/deployment/environment-variables) for details.
+
+## Deployment Verification
+
+After deployment, verify your worker is running:
+
+```bash
+curl https://your-worker.workers.dev/?section=top
+```
+
+You should receive an SVG image response.
+
+## Troubleshooting
+
+### Common Issues
+
+**Build Errors**
+
+If you encounter TypeScript errors during deployment:
+
+```bash
+pnpm types
+```
+
+**Authentication Issues**
+
+If Wrangler can't authenticate:
+
+```bash
+wrangler logout
+wrangler login
+```
+
+**Deployment Failures**
+
+Check the Cloudflare Workers dashboard for error logs and ensure your `wrangler.toml` configuration is correct.
+
+## Next Steps
+
+- Configure [Environment Variables](/deployment/environment-variables)
+- Set up [GitHub Actions Workflows](/deployment/workflows)
+- Customize your worker domain in the Cloudflare dashboard

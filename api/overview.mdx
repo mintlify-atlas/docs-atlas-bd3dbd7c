@@ -1,0 +1,100 @@
+---
+title: 'API Overview'
+description: 'Learn how to use the GitHub Profile README API to generate dynamic SVG sections'
+---
+
+## Introduction
+
+The GitHub Profile README API is a Cloudflare Worker that generates dynamic SVG images for your GitHub profile. Each SVG section is rendered on-demand with real-time data and animations.
+
+## Base URL Structure
+
+The API is accessed via HTTP GET requests:
+
+```
+https://your-worker-domain.workers.dev/
+```
+
+All sections are accessed through the same base URL with different query parameters.
+
+## How It Works
+
+The API works by:
+
+1. **Receiving a request** with query parameters specifying the section and theme
+2. **Rendering SVG content** server-side with embedded CSS and HTML
+3. **Returning the SVG** as `image/svg+xml` with no-cache headers
+4. **Displaying in GitHub** README via standard image syntax
+
+Each request generates a fresh SVG, ensuring your profile always shows current data.
+
+## Response Format
+
+All endpoints return SVG images with:
+
+- **Content-Type**: `image/svg+xml`
+- **Cache-Control**: `no-store, no-cache, must-revalidate, proxy-revalidate`
+- **Pragma**: `no-cache`
+- **Expires**: `0`
+
+The cache headers ensure the SVG is regenerated on each view, keeping your profile data fresh.
+
+## Using in GitHub README
+
+To use the API in your GitHub profile README, simply add image tags:
+
+```markdown
+![Top Section](https://your-worker-domain.workers.dev/?section=top&theme=dark)
+
+![Main Section](https://your-worker-domain.workers.dev/?theme=dark)
+
+![Resume Link](https://your-worker-domain.workers.dev/?section=link-resume&theme=dark&i=0)
+```
+
+## Example Response
+
+Each section returns an SVG like:
+
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" height="20" data-theme="dark" width="100%">
+  <foreignObject width="100%" height="100%">
+    <div xmlns="http://www.w3.org/1999/xhtml">
+      <style>/* Embedded CSS with Geist font and animations */</style>
+      <!-- SVG content with data and animations -->
+    </div>
+  </foreignObject>
+</svg>
+```
+
+## Features
+
+### Dynamic Theming
+
+Switch between light and dark themes using the `theme` parameter. The API supports custom color schemes for both modes.
+
+### Animations
+
+All sections include smooth fade-in animations, shine effects, and scrolling graphs. Animations are CSS-based and work in most browsers (Chrome/Safari recommended).
+
+### Location Detection
+
+The main section uses Cloudflare's edge network to detect the viewer's location and can display personalized greetings.
+
+### Browser Compatibility
+
+The API includes special fallback content for Firefox users, as some advanced CSS features have limited support.
+
+## Rate Limiting
+
+GitHub caches images in README files, so the API is not called on every page view. No explicit rate limiting is needed.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Available Sections" icon="grid" href="/api/sections">
+    Explore all section types and their use cases
+  </Card>
+  <Card title="Query Parameters" icon="sliders" href="/api/parameters">
+    Learn about all available parameters
+  </Card>
+</CardGroup>

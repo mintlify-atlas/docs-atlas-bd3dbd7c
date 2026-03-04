@@ -1,0 +1,290 @@
+---
+title: 'Query Parameters'
+description: 'Complete reference for all API query parameters and their values'
+---
+
+## Overview
+
+The API accepts query parameters to customize the rendered SVG sections. All parameters are optional, with sensible defaults.
+
+## Parameters Reference
+
+### section
+
+<ParamField query="section" type="string" default="(empty)">
+  Specifies which section type to render.
+
+  **Valid Values**:
+  - `top` - Header section with navigation and stats
+  - `link-resume` - Resume link button
+  - `link-website` - Website link button  
+  - `link-linkedin` - LinkedIn link button
+  - `link-facebook` - Facebook link button
+  - `link-instagram` - Instagram link button
+  - `link-twitter` - Twitter link button
+  - `fallback` - Firefox compatibility section
+  - *(empty)* - Main profile section (default)
+
+  **Example**:
+  ```bash
+  ?section=top
+  ?section=link-linkedin
+  ```
+</ParamField>
+
+---
+
+### theme
+
+<ParamField query="theme" type="string" default="light">
+  Controls the color scheme of the rendered section.
+
+  **Valid Values**:
+  - `light` - Light mode with dark text on light background
+  - `dark` - Dark mode with light text on dark background
+
+  **Color Schemes**:
+
+  **Light Theme**:
+  - Text: `#202020` (black)
+  - Background dots: White to black gradient (5 levels)
+  - Border: `rgba(32, 32, 32, 0.06)`
+
+  **Dark Theme**:
+  - Text: `#FFFFFF` (white)
+  - Background dots: Dark gray to white gradient (5 levels)  
+  - Border: `rgba(255, 255, 255, 0.06)`
+
+  **Example**:
+  ```bash
+  ?theme=light
+  ?theme=dark
+  ```
+</ParamField>
+
+---
+
+### i
+
+<ParamField query="i" type="number" default="0">
+  Index parameter for link sections to stagger animations.
+
+  **Purpose**:
+  - Creates staggered fade-in effects for multiple links
+  - Adds variety to animation timing
+  - Calculates animation delay: `1s + (index × 1.2s)`
+
+  **Valid Values**:
+  - Any non-negative integer
+  - Typically `0` through `5` for social links
+
+  **Example**:
+  ```bash
+  ?section=link-resume&i=0
+  ?section=link-website&i=1
+  ?section=link-linkedin&i=2
+  ```
+
+  **Effect on Animations**:
+  - `i=0`: Delay = 1.0s
+  - `i=1`: Delay = 2.2s  
+  - `i=2`: Delay = 3.4s
+  - `i=3`: Delay = 4.6s
+
+  **Usage Note**:
+  Only applies to `link-*` sections. Other sections ignore this parameter.
+</ParamField>
+
+---
+
+## Width and Height Handling
+
+Dimensions are **not** configurable via parameters. Each section has fixed dimensions defined in the source code:
+
+### Fixed Dimensions by Section
+
+| Section | Width | Height |
+|---------|-------|--------|
+| `top` | 100% | 20px |
+| Main (default) | 100% | 310px |
+| `link-resume` | 100px | 18px |
+| `link-website` | 100px | 18px |
+| `link-linkedin` | 100px | 18px |
+| `link-facebook` | 100px | 18px |
+| `link-instagram` | 100px | 20px |
+| `link-twitter` | 100px | 18px |
+| `fallback` | 420px | 180px |
+
+**Responsive Behavior**:
+
+The main section uses CSS container queries for responsive layout:
+- `< 550px`: Mobile layout (6-column grid)
+- `550px - 700px`: Medium layout  
+- `> 700px`: Large layout
+
+---
+
+## Request Examples
+
+### Basic Request
+
+Get the main section with default theme:
+
+```bash
+GET https://your-worker-domain.workers.dev/
+```
+
+### Top Section (Dark Theme)
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=top&theme=dark
+```
+
+### Social Link with Index
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-linkedin&theme=dark&i=2
+```
+
+### Multiple Parameters
+
+```bash
+GET https://your-worker-domain.workers.dev/?section=link-resume&theme=light&i=0
+```
+
+---
+
+## Parameter Validation
+
+### Invalid Values
+
+The API handles invalid parameters gracefully:
+
+- **Invalid `section`**: Renders main section as fallback
+- **Invalid `theme`**: Defaults to `light`
+- **Invalid `i`**: Converts to number, uses `0` if NaN
+
+### Missing Parameters
+
+```bash
+# Both of these are equivalent:
+GET /?section=&theme=
+GET /
+
+# Both render main section with light theme
+```
+
+---
+
+## Advanced Usage
+
+### Combining Parameters
+
+All parameters can be combined:
+
+```bash
+# Link section with dark theme and animation index
+GET /?section=link-twitter&theme=dark&i=4
+```
+
+### Parameter Order
+
+Parameter order doesn't matter:
+
+```bash
+# These are identical:
+?section=top&theme=dark
+?theme=dark&section=top
+```
+
+### URL Encoding
+
+Special characters in parameters should be URL encoded:
+
+```bash
+# If you extend the API with custom sections:
+?section=custom%20section&theme=dark
+```
+
+---
+
+## Implementation Details
+
+From `worker.ts:src/worker.ts:16`:
+
+```typescript
+const { searchParams } = new URL(request.url);
+const theme = (searchParams.get("theme") ?? "light") as "light" | "dark";
+const section = searchParams.get("section") ?? "";
+```
+
+### Link Index Parsing
+
+From `worker.ts:src/worker.ts:26`:
+
+```typescript
+const index = Number(searchParams.get("i")) ?? 0;
+```
+
+The `i` parameter is converted to a number, defaulting to `0` if missing or invalid.
+
+---
+
+## Parameter Summary
+
+| Parameter | Type | Default | Required | Sections |
+|-----------|------|---------|----------|----------|
+| `section` | string | `""` | No | All |
+| `theme` | `"light"` \| `"dark"` | `"light"` | No | All |
+| `i` | number | `0` | No | `link-*` only |
+
+---
+
+## Real-World Examples
+
+### Complete Profile Setup
+
+```markdown
+<!-- GitHub README.md -->
+
+<!-- Header with dark theme -->
+![Header](https://worker.dev/?section=top&theme=dark)
+
+<!-- Main section with contributions graph -->
+![Profile](https://worker.dev/?theme=dark)
+
+<!-- Social links with staggered animations -->
+<div align="center">
+  <a href="https://resume.com">
+    <img src="https://worker.dev/?section=link-resume&theme=dark&i=0" />
+  </a>
+  <a href="https://website.com">
+    <img src="https://worker.dev/?section=link-website&theme=dark&i=1" />
+  </a>
+  <a href="https://linkedin.com/in/user">
+    <img src="https://worker.dev/?section=link-linkedin&theme=dark&i=2" />
+  </a>
+</div>
+
+<!-- Firefox fallback -->
+![Fallback](https://worker.dev/?section=fallback&theme=dark)
+```
+
+### Light Theme Variant
+
+```markdown
+![Light Header](https://worker.dev/?section=top&theme=light)
+![Light Profile](https://worker.dev/?theme=light)
+```
+
+### Testing Different Themes
+
+You can easily test both themes:
+
+```bash
+# Light theme
+curl "https://worker.dev/?section=top&theme=light" > light.svg
+
+# Dark theme  
+curl "https://worker.dev/?section=top&theme=dark" > dark.svg
+```
