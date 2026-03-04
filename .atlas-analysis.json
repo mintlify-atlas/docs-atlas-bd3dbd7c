@@ -1,0 +1,67 @@
+{
+  "projectType": "general",
+  "projectName": "GitHub Profile README",
+  "projectDescription": "A dynamic GitHub profile README powered by Cloudflare Workers that displays contribution graphs and social links.",
+  "theme": "mint",
+  "primaryColor": "#848c8e",
+  "lightColor": "#11161e",
+  "darkColor": "#cfd0d2",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": ["introduction", "quickstart"]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": ["concepts/architecture", "concepts/rendering", "concepts/contributions"]
+          },
+          {
+            "group": "Customization",
+            "pages": ["customization/themes", "customization/sections", "customization/styling"]
+          },
+          {
+            "group": "Deployment",
+            "pages": ["deployment/cloudflare", "deployment/environment-variables", "deployment/workflows"]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Endpoints",
+            "pages": ["api/overview", "api/sections", "api/parameters"]
+          },
+          {
+            "group": "Render Functions",
+            "pages": ["api/main", "api/top", "api/link", "api/fallback"]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Dynamic SVG rendering with Cloudflare Workers",
+    "GitHub contribution calendar visualization",
+    "Dark/light theme support",
+    "Animated social media links",
+    "Automated daily updates via GitHub Actions",
+    "WhatPulse stats integration"
+  ],
+  "publicApiSurface": [
+    "GET /?section=top&theme={light|dark}",
+    "GET /?section=main&theme={light|dark}",
+    "GET /?section=link-resume&theme={light|dark}&i={index}",
+    "GET /?section=link-website&theme={light|dark}&i={index}",
+    "GET /?section=link-linkedin&theme={light|dark}&i={index}",
+    "GET /?section=fallback&theme={light|dark}",
+    "main(props: Props & Main)",
+    "top(props: Props & { contributions: number })",
+    "link(props: Props & { index: number })",
+    "fallback(props: Props & { width: number })"
+  ]
+}
